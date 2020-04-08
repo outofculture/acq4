@@ -48,18 +48,24 @@ python distribution plus a few extra packages.
 
 1. Download and install [Anaconda](https://www.anaconda.com/download/) for python 2.7 (64-bit recommended)
 
-2. Install the correct versions of a few packages:
+2. Enable conda access to pyqt4:
 
-```bash
-       $ conda install pyserial pyqt=4 pyparsing=2.0.3
-```
+    ```bash
+    conda config --set restore_free_channel true
+    ```
 
-3. Clone the ACQ4 source repository::
+3. Install the correct versions of a few packages:
 
-```bash
-       $ git clone https://github.com/acq4/acq4.git
-```
+    ```bash
+    conda create --name=acq4 python=2.7 pyqt=4 numpy scipy pyserial pyparsing=2.0.3 pillow h5py
+    conda activate acq4
+    ```
 
-4. Run `python -m acq4` from the source directory, or install with `python setup.py install` and run using `acq4`.
+4. Clone the ACQ4 source repository::
 
+    ```bash
+    git clone https://github.com/acq4/acq4.git
+    cd acq4
+    ```
 
+5. Run `python -m acq4` from the source directory, or install with `python setup.py install` and run using `acq4`.
