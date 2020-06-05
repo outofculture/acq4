@@ -20,7 +20,6 @@ dependencies:
   - icu=64.2=he1b5a44_1
   - jpeg=9c=h14c3975_1001
   - kiwisolver=1.2.0=py38hbf85e49_0
-  - ld_impl_linux-64=2.34=h53a641e_0
   - libblas=3.8.0=16_openblas
   - libcblas=3.8.0=16_openblas
   - libclang=9.0.1=default_hde54327_0
@@ -42,11 +41,7 @@ dependencies:
   - libxslt=1.1.33=h31b3aaa_0
   - llvm-openmp=10.0.0=hc9558a2_0
   - lz4-c=1.9.2=he1b5a44_0
-  - matplotlib=3.2.1=0
-  - matplotlib-base=3.2.1=py38h2af1d28_0
   - ncurses=6.1=hf484d3e_1002
-  - nspr=4.25=he1b5a44_0
-  - nss=3.47=he751ad9_0
   - numpy=1.18.1=py38h8854b6b_1
   - olefile=0.46=py_0
   - openssl=1.1.1g=h516909a_0
@@ -55,14 +50,9 @@ dependencies:
   - pip=20.1=pyh9f0ad1d_0
   - pthread-stubs=0.4=h14c3975_1001
   - pyopengl=3.1.5=py_0
-  - pyparsing=2.4.7=pyh9f0ad1d_0
-  - pyqt=5.12.3=py38hcca6a23_1
   - pyserial=3.4=py_2
-  - pyside2=5.13.2=py38hbee1fde_2
   - python=3.8.2=he5300dc_7_cpython
-  - python-dateutil=2.8.1=py_0
   - python_abi=3.8=1_cp38
-  - qt=5.12.5=hd8c4c69_1
   - readline=8.0=hf8c457e_0
   - scipy=1.4.1=py38h18bccfc_3
   - setuptools=46.1.3=py38h32f6830_0
@@ -70,7 +60,6 @@ dependencies:
   - six=1.14.0=py_1
   - sqlite=3.30.1=hcee41ef_0
   - tk=8.6.10=hed695b0_0
-  - tornado=6.0.4=py38h1e0a361_1
   - wheel=0.34.2=py_1
   - xorg-libxau=1.0.9=h14c3975_0
   - xorg-libxdmcp=1.1.3=h516909a_0
@@ -78,6 +67,5 @@ dependencies:
   - zlib=1.2.11=h516909a_1006
   - zstd=1.4.4=h6597ccf_3
   - pip:
-    - pyqt5-sip==4.19.18
-    - pyqtwebengine==5.12.1
+    - pyside2==5.15
     - git+https://github.com/acq4/pyqtgraph@30d5e0df#egg=pyqtgraph

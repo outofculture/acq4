@@ -35,7 +35,6 @@ RUN conda install -n acq4 -c conda-forge ipython ipdb
 RUN mkdir /code
 WORKDIR /code
 ENV HOME /code
-RUN conda init bash
 
 #### Usage (from ..)
 # docker build -f tools/Dockerfile.py3pyside2 -t acq4:py3pyside2 .
