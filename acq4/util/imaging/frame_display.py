@@ -7,6 +7,7 @@ from acq4.util.debug import printExc
 from acq4.util.Thread import Thread
 
 MAX_FPS = 33
+MS_PER_FRAME = int((1.0 / MAX_FPS) * 1000)
 
 
 class _FrameDrawThread(Thread):
@@ -17,7 +18,7 @@ class _FrameDrawThread(Thread):
         self._timer.moveToThread(self)
 
     def run(self):
-        self._timer.start(int((1.0 / MAX_FPS) * 1000))  # convert MAX_FPS to ms-per-frame
+        self._timer.start(MS_PER_FRAME)
         Qt.QEventLoop().exec_()
 
 
