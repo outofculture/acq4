@@ -1,11 +1,20 @@
 from __future__ import print_function
 
 import pyqtgraph as pg
+from pyqtgraph import setConfigOption
 
 from acq4.util import Qt
 from acq4.util.debug import printExc
 from .bg_subtract_ctrl import BgSubtractCtrl
 from .contrast_ctrl import ContrastCtrl
+from ... import getManager
+
+try:
+    import cupy as cp
+    cupyLibraryAvailable = True
+except ImportError:
+    cp = None
+    cupyLibraryAvailable = False
 
 
 class FrameDisplay(Qt.QObject):
@@ -30,7 +39,10 @@ class FrameDisplay(Qt.QObject):
         self._maxFPS = maxFPS
         self._sPerFrame = 1.0 / maxFPS
         self._msPerFrame = int(self._sPerFrame * 1000)
-        self._imageItem = pg.ImageItem()
+        self._useCUDA = getManager().config["cudaImageProcessing"]
+        if self._useCUDA:
+            setConfigOption("useCupy", True)
+        self._imageItem = pg.ImageItem()  # Implicitly depends on global setConfigOption state
         self._imageItem.setAutoDownsample(True)
         self.contrastCtrl = self.contrastClass()
         self.contrastCtrl.setImageItem(self._imageItem)
@@ -137,8 +149,10 @@ class FrameDisplay(Qt.QObject):
             self.contrastCtrl.processImage(data)
             prof()
 
-            # update image in viewport
-            self._imageItem.updateImage(data.copy())  # using data.copy() here avoids crashes!
+            if self._useCUDA and cupyLibraryAvailable:
+                self._imageItem.updateImage(cp.asarray(data))
+            else:
+                self._imageItem.updateImage(data.copy())
             prof()
 
             self.imageUpdated.emit(self.currentFrame)
