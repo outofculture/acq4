@@ -1,12 +1,14 @@
 from __future__ import print_function
-from acq4.util import Qt
-from .Device import Device
-from acq4.util.Mutex import Mutex
-from acq4.Interfaces import InterfaceMixin
-import pyqtgraph as pg
+
 import collections
+
 import numpy as np
 import six
+
+import pyqtgraph as pg
+from acq4.Interfaces import InterfaceMixin
+from acq4.util import Qt
+from acq4.util.Mutex import Mutex
 
 
 class OptomechDevice(InterfaceMixin):
@@ -381,16 +383,18 @@ class OptomechDevice(InterfaceMixin):
         See deviceTransform; this method returns the inverse.
         """
         with self.__lock:
-            if self.__inverseTransform == 0:
-                tr = self.__transform * 1  # *1 makes a copy
+            invtr = self.__inverseTransform
+            if invtr == 0:
+                tr = Qt.QMatrix4x4(self.__transform)  # self.__transform * 1 ?
                 if tr is None:
-                    self.__inverseTransform = None
+                    invtr = None
                 else:
                     inv, invertible = tr.inverted()
                     if not invertible:
                         raise Exception("Transform is not invertible.")
-                    self.__inverseTransform = inv
-            tr = self.__inverseTransform * 1  # *1 makes a copy
+                    invtr = inv
+                self.__inverseTransform = invtr
+            tr = Qt.QMatrix4x4(invtr)  # self.__inverseTransform * 1 ?
             if subdev == 0:  ## indicates we should skip any subdevices
                 return tr
             ## if a subdevice is specified, multiply by the subdevice's transform before returning
@@ -398,8 +402,8 @@ class OptomechDevice(InterfaceMixin):
             if dev is None:
                 return tr
             else:
-                return dev.inverseDeviceTransform() * tr 
-    
+                return dev.inverseDeviceTransform() * tr
+
     def setDeviceTransform(self, tr):
         with self.__lock:
             self.__transform = pg.SRTTransform3D(tr)
@@ -421,7 +425,7 @@ class OptomechDevice(InterfaceMixin):
             if gtr == 0:
                 gtr = self.__computeGlobalTransform()
                 self.__globalTransform = gtr
-            return gtr * 1  # *1 makes a copy
+            return Qt.QMatrix4x4(gtr)  # gtr * 1 ?
         else:
             return self.__computeGlobalTransform(subdev)
                 
@@ -437,8 +441,8 @@ class OptomechDevice(InterfaceMixin):
         deviceTr = self.deviceTransform(subdev)
         if deviceTr is None:
             return None
-        transform = (parentTr * 1) * deviceTr
-                
+        transform = parentTr * deviceTr
+
         if inverse:
             inv, invertible = transform.inverted()
             if not invertible:
@@ -452,18 +456,18 @@ class OptomechDevice(InterfaceMixin):
         See globalTransform; this method returns the inverse.
         """
         with self.__lock:
-            #dev = self.getSubdevice(subdev)
             if subdev is None: ## return cached transform
-                if self.__inverseGlobalTransform == 0:
+                igt = self.__inverseGlobalTransform
+                if igt == 0:
                     tr = self.globalTransform()
                     if tr is None:
-                        self.__inverseGlobalTransform = None
+                        igt = None
                     else:
-                        inv, invertible = tr.inverted()
+                        igt, invertible = tr.inverted()
                         if not invertible:
                             raise Exception("Transform is not invertible.")
-                        self.__inverseGlobalTransform = inv
-                return self.__inverseGlobalTransform * 1  # *1 makes a copy
+                    self.__inverseGlobalTransform = igt
+                return Qt.QMatrix4x4(igt)  # igt * 1 ?
             else:
                 return self.__computeGlobalTransform(subdev, inverse=True)
 
@@ -573,6 +577,7 @@ class OptomechDevice(InterfaceMixin):
                 self.__inverseTransform = 0
             self.__globalTransform = 0
             self.__inverseGlobalTransform = 0
+
         # child global transforms must also be invalidated before any change signals are emitted
         for ch in self.__children:
             ch.invalidateCachedTransforms(invalidateLocal=False)
@@ -708,7 +713,7 @@ class OptomechDevice(InterfaceMixin):
             dev = dev.parentDevice()
         return None
 
-        
+
 class DeviceTreeItemGroup(pg.ItemGroup):
     """
     Extension of QGraphicsItemGroup that maintains a hierarchy of item groups
@@ -820,6 +825,3 @@ class DeviceTreeItemGroup(pg.ItemGroup):
         for subdev, items in self.groups[device].items():
             groups.extend(items)
         return groups
-    
-
-        
