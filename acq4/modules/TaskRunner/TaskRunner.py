@@ -1066,6 +1066,16 @@ class TaskThread(Thread):
 
         prof.mark('pause')
 
+        if type(cmd) is not dict:
+            print("========= TaskRunner.runOnce cmd: ==================")
+            print(cmd)
+            print("========= TaskRunner.runOnce params: ==================")
+            print("Params:", params)
+            print("===========================")
+            raise TypeError(
+                "TaskRunner.runOnce failed to generate a proper command structure. Object type was '%s', should have been 'dict'." % type(
+                    cmd))
+
         task = self.dm.createTask(cmd)
         prof.mark('create task')
 
