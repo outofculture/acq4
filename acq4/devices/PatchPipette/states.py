@@ -3,6 +3,8 @@ import threading
 import sys, time
 import numpy as np
 import scipy.stats
+from math import sqrt
+from math import tan
 from six.moves import range, queue
 from pyqtgraph import ptime, disconnect
 from acq4.util.future import Future
@@ -1051,7 +1053,10 @@ class PatchPipetteCleanState(PatchPipetteState):
             if pos is None:
                 raise Exception("Device %s does not have a stored %s position." % (dev.pipetteDevice.name(), stage))
 
-            self.gotoApproachPosition(pos)
+            if stage == 'clean':
+                self.gotoRinsePosition(pos)
+            else:
+                self.gotoApproachPosition(pos)
 
             # todo: if needed, we can check TP for capacitance changes here
             # and stop moving as soon as the fluid is detected
@@ -1082,6 +1087,32 @@ class PatchPipetteCleanState(PatchPipetteState):
 
         # now move y over the well
         approachPos2 = [pos[0], pos[1], pos[2] + self.config['approachHeight']]
+        fut = dev.pipetteDevice._moveToGlobal(approachPos2, 'fast')
+        self.lastApproachPos = approachPos2
+        self.waitFor(fut)
+
+    def gotoRinsePosition(self, pos):
+        """
+        """
+        dev = self.dev
+
+        rad = 27 * np.pi / 180. 
+
+        currentPos = dev.pipetteDevice.globalPosition()
+
+        # move pipette up
+        dx = currentPos[0] - pos[0]
+        dy = currentPos[1] - pos[1]
+        dxy = sqrt(dx**2+dy**2)
+        dz = dxy * tan(rad)
+        approachPos1 = [currentPos[0], currentPos[1], pos[2] + dz]
+        fut = dev.pipetteDevice._moveToGlobal(approachPos1, 'fast')
+        self.waitFor(fut)
+        if self.resetPos is None:
+            self.resetPos = approachPos1
+
+        # now approach Pipette to rinse position
+        approachPos2 = [pos[0], pos[1], pos[2]]
         fut = dev.pipetteDevice._moveToGlobal(approachPos2, 'fast')
         self.lastApproachPos = approachPos2
         self.waitFor(fut)
