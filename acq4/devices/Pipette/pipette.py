@@ -775,11 +775,15 @@ class PipetteDeviceGui(Qt.QWidget):
         self.win = win
         self.dev = dev
 
+
         self.layout = Qt.QGridLayout()
         self.setLayout(self.layout)
 
         self.posLabelLayout = Qt.QHBoxLayout()
         self.layout.addLayout(self.posLabelLayout, 0, 0)
+        fooButton = Qt.QPushButton("Really go above target")
+        fooButton.clicked.connect(self.onFooClicked)
+        self.layout.addWidget(fooButton, 1, 0)
 
         self.posLabels = [Qt.QLabel(), Qt.QLabel(), Qt.QLabel()]
         for l in self.posLabels:
@@ -787,6 +791,9 @@ class PipetteDeviceGui(Qt.QWidget):
 
         self.dev.sigGlobalTransformChanged.connect(self.pipetteMoved)
         self.pipetteMoved()
+
+    def onFooClicked(self):
+        print("foo clicked",self.win)
 
     def pipetteMoved(self):
         pos = self.dev.globalPosition()
