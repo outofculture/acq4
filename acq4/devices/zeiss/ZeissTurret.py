@@ -31,8 +31,7 @@ class ZeissTurret(FilterWheel):
         return self._dev.getElementCount()
 
     def _getPosition(self):
-        # convert 1-based to 0-based index
-        return self._dev.getPosition() - 1
+        return self._dev.getPosition()
 
     def _setPosition(self, newPosition):
         self._isMoving = True
@@ -40,8 +39,7 @@ class ZeissTurret(FilterWheel):
         if self._targetPosition == newPosition:
             self._onPosSettled(newPosition)
         else:
-            # convert 0-based to 1-based index
-            self._dev.setPosition(newPosition + 1)
+            self._dev.setPosition(newPosition)
         return FilterWheelFuture(self, newPosition)
 
     def _stop(self):
