@@ -1053,7 +1053,7 @@ class PatchPipetteCleanState(PatchPipetteState):
             if pos is None:
                 raise Exception("Device %s does not have a stored %s position." % (dev.pipetteDevice.name(), stage))
 
-            if stage == 'clean':
+            if stage == 'rinse':
                 self.gotoRinsePosition(pos)
             else:
                 self.gotoApproachPosition(pos)
@@ -1105,13 +1105,14 @@ class PatchPipetteCleanState(PatchPipetteState):
         dy = currentPos[1] - pos[1]
         dxy = sqrt(dx**2+dy**2)
         dz = dxy * tan(rad)
+
         approachPos1 = [currentPos[0], currentPos[1], pos[2] + dz]
         fut = dev.pipetteDevice._moveToGlobal(approachPos1, 'fast')
         self.waitFor(fut)
         if self.resetPos is None:
             self.resetPos = approachPos1
 
-        # now approach Pipette to rinse position
+        # now approach Pipette to rinse position diagonally
         approachPos2 = [pos[0], pos[1], pos[2]]
         fut = dev.pipetteDevice._moveToGlobal(approachPos2, 'fast')
         self.lastApproachPos = approachPos2

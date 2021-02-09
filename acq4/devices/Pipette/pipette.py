@@ -3,10 +3,12 @@ from __future__ import division
 from __future__ import print_function
 
 import weakref
-
+import math
 import numpy as np
 import pyqtgraph as pg
 from six.moves import range
+
+import pdb
 
 from acq4 import getManager
 from acq4.devices.Device import Device
@@ -781,9 +783,18 @@ class PipetteDeviceGui(Qt.QWidget):
 
         self.posLabelLayout = Qt.QHBoxLayout()
         self.layout.addLayout(self.posLabelLayout, 0, 0)
-        fooButton = Qt.QPushButton("Really go above target")
-        fooButton.clicked.connect(self.onFooClicked)
-        self.layout.addWidget(fooButton, 1, 0)
+
+        focusButton = Qt.QPushButton("Focus on Tip")
+        moveButton = Qt.QPushButton("Move Tip")
+        calButton = Qt.QPushButton("calibrate Tip")
+
+        focusButton.clicked.connect(self.onFocusClicked)
+        moveButton.clicked.connect(self.onMoveClicked)
+        calButton.clicked.connect(self.onCalClicked)
+
+        self.layout.addWidget(focusButton, 1, 0)
+        self.layout.addWidget(moveButton, 2, 0)
+        self.layout.addWidget(calButton, 3, 0)
 
         self.posLabels = [Qt.QLabel(), Qt.QLabel(), Qt.QLabel()]
         for l in self.posLabels:
@@ -792,8 +803,51 @@ class PipetteDeviceGui(Qt.QWidget):
         self.dev.sigGlobalTransformChanged.connect(self.pipetteMoved)
         self.pipetteMoved()
 
-    def onFooClicked(self):
-        print("foo clicked",self.win)
+    def onFocusClicked(self):
+        #pdb.set_trace()
+
+        print("focus clicked",self.win)
+        
+
+
+        while(self.dev.moving==True):
+            continue
+            
+        self.dev.focusTip(speed='slow')
+        
+        #print(help(self.dev))
+    def onMoveClicked(self):
+        print("move clicked",self.win)
+
+        #pos = self.dev.globalPosition()
+        #self.dev._moveToGlobal((pos[0]+10E-6,pos[1]+100E-6,pos[2]),speed='slow')
+
+        dz = -100E-6
+        pitch = self.dev.pitchAngle()
+        dx = dz/(math.sin(pitch))
+
+        print("definition done")
+        #local x-movement
+        
+        self.dev._moveToLocal((dx,0,0),speed = 'slow')
+
+        time.sleep(3)
+
+        #self.dev._moveToLocal((0,0,dz),speed = 'slow')
+
+        # #global z-movement
+        # WP2 = self.dev.globalPosition()
+        # WP2[2] += dz
+        # self.dev._moveToGlobal((WP2[0],WP2[1],WP2[2]),speed='slow')
+
+        # time.sleep(3)
+
+
+    def onCalClicked(self):
+        print("Calibration started")
+        self.dev.tracker.autoCalibrate()
+        print("Calibration finished")
+
 
     def pipetteMoved(self):
         pos = self.dev.globalPosition()
