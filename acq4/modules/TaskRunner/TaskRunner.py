@@ -386,6 +386,8 @@ class TaskRunner(Module):
                     dock.setObjectName(d)
                     dock.setWidget(dw)
                     dock.setAutoFillBackground(True)
+                    if dw is None:
+                        raise HelpfulException("The task interface for this device could not be loaded")
                     dw.setSizePolicy(Qt.QSizePolicy.Expanding, Qt.QSizePolicy.Expanding)
                     self.docks[d] = dock
                     self.win.addDockWidget(Qt.Qt.BottomDockWidgetArea, dock)
