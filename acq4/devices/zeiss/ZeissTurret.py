@@ -24,9 +24,6 @@ class ZeissTurret(FilterWheel):
         self.sigFilterChanged.emit(self, position)
         self._isMoving = False
 
-    def _setInitialPos(self):
-        self._setPosition(self._initialSlot)
-
     def getPositionCount(self):
         return self._dev.getElementCount()
 
