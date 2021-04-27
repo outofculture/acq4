@@ -165,6 +165,7 @@ class ApproachMotionPlanner(PipetteMotionPlanner):
         speed = self.speed
 
         target = pip.targetPosition()
+
         return pip._movePath(self.approachPath(target, speed))
     
     def approachPath(self, target, speed):
@@ -192,6 +193,9 @@ class ApproachMotionPlanner(PipetteMotionPlanner):
 
         # target in local coordinates
         ltarget = pip.mapFromGlobal(target)
+
+        #EDIT: Introduce small z-offset for cell detection from above
+        ltarget[2] += 2E-6
 
         # compute approach position (axis aligned to target, at standby depth or higher)
         dz2 = max(0, stbyDepth - target[2])
@@ -254,15 +258,17 @@ class AboveTargetMotionPlanner(PipetteMotionPlanner):
         1. 100 um away from the second waypoint, on a diagonal approach. This is meant to normalize the hysteresis
            at the second waypoint. 
         2. This position is centered on the target, a small distance above the sample surface.
+
+        Edit: Changed Z-Position to match the actual height of the target and not the surface
         """
         pip = self.pip
         target = pip.targetPosition()
 
         # will recalibrate 50 um above surface
         scope = pip.scopeDevice()
-        surfaceDepth = scope.getSurfaceDepth()
+        #surfaceDepth = scope.getSurfaceDepth()
         waypoint2 = np.array(target)
-        waypoint2[2] = surfaceDepth + 50e-6
+        waypoint2[2] = waypoint2[2] + 250e-6
 
         # Need to arrive at this point via approach angle to correct for hysteresis
         lwp = pip.mapFromGlobal(waypoint2)

@@ -425,14 +425,30 @@ class ROIPlotter(Qt.QWidget):
             polyPath.lineTo(x - 0.2, y - 0.3)
         self.rulerBtn = pg.PathButton(path=polyPath)
 
+        # rangeDisplay
+        polyPath = Qt.QPainterPath()
+        polyPath.moveTo(0, 0)
+        polyPath.lineTo(3, -2)
+        polyPath.moveTo(0, 0)
+        polyPath.lineTo(3, 0)
+        polyPath.moveTo(1, 0)
+        polyPath.arcTo(-1, -1, 2, 2, 0, 33.69)
+        for i in range(5):
+            x = i * 3.0 / 4.0
+            y = x * -2.0 / 3.0
+            polyPath.moveTo(x, y)
+            polyPath.lineTo(x - 0.2, y - 0.3)
+        self.rangeBtn = pg.PathButton(path=polyPath)
+
         self.roiLayout.addWidget(self.rectBtn, 0, 0)
         self.roiLayout.addWidget(self.ellipseBtn, 0, 1)
         self.roiLayout.addWidget(self.polygonBtn, 1, 0)
         self.roiLayout.addWidget(self.rulerBtn, 1, 1)
+        self.roiLayout.addWidget(self.rangeBtn, 2, 0)
         self.roiTimeSpin = pg.SpinBox(value=5.0, suffix="s", siPrefix=True, dec=True, step=0.5, bounds=(0, None))
-        self.roiLayout.addWidget(self.roiTimeSpin, 2, 0, 1, 2)
+        self.roiLayout.addWidget(self.roiTimeSpin, 3, 0, 1, 2)  # 2, 0, 1, 2)
         self.roiPlotCheck = Qt.QCheckBox("Plot")
-        self.roiLayout.addWidget(self.roiPlotCheck, 3, 0, 1, 2)
+        self.roiLayout.addWidget(self.roiPlotCheck, 4, 0, 1, 2) # 3, 0, 1, 2)
 
         self.roiPlot = pg.PlotWidget()
         self.roiLayout.addWidget(self.roiPlot, 0, 2, self.roiLayout.rowCount(), 1)
@@ -441,6 +457,7 @@ class ROIPlotter(Qt.QWidget):
         self.ellipseBtn.clicked.connect(lambda: self.addROI("ellipse"))
         self.polygonBtn.clicked.connect(lambda: self.addROI("polygon"))
         self.rulerBtn.clicked.connect(lambda: self.addROI("ruler"))
+        self.rangeBtn.clicked.connect(lambda: self.addROI("range"))
 
     def addROI(self, roiType):
         pen = pg.mkPen(pg.intColor(len(self.ROIs)))
@@ -453,6 +470,10 @@ class ROIPlotter(Qt.QWidget):
             roi = pg.EllipseROI(center, size, removable=True)
         elif roiType == "polygon":
             pts = [center, center + pg.Point(0, size[1]), center + pg.Point(size[0], 0)]
+            roi = pg.PolyLineROI(pts, closed=True, removable=True)
+        elif roiType == "range":
+            test = [-5342E-6,-8826E-6]
+            pts = [test, center + pg.Point(0, size[1]), center + pg.Point(size[0], 0)]
             roi = pg.PolyLineROI(pts, closed=True, removable=True)
         elif roiType == "ruler":
             pts = [center, center + pg.Point(size[0], size[1])]

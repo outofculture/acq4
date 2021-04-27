@@ -7,6 +7,7 @@ import math
 import numpy as np
 import pyqtgraph as pg
 from six.moves import range
+import time
 
 import pdb
 
@@ -18,6 +19,7 @@ from acq4.devices.Stage import Stage
 from acq4.modules.Camera import CameraModuleInterface
 from acq4.util import Qt
 from acq4.util.target import Target
+from ..Stage.calibration import CalibrationWindow
 from .planners import defaultMotionPlanners
 from .tracker import PipetteTracker
 
@@ -784,17 +786,26 @@ class PipetteDeviceGui(Qt.QWidget):
         self.posLabelLayout = Qt.QHBoxLayout()
         self.layout.addLayout(self.posLabelLayout, 0, 0)
 
+        pipetteChangeButton = Qt.QPushButton("Change pipette")
         focusButton = Qt.QPushButton("Focus on Tip")
         moveButton = Qt.QPushButton("Move Tip")
         calButton = Qt.QPushButton("calibrate Tip")
+        CalibrationButton = Qt.QPushButton("Calibration")
+        CoarseCalibrationButton = Qt.QPushButton("Coarse Calibration")
 
         focusButton.clicked.connect(self.onFocusClicked)
+        pipetteChangeButton.clicked.connect(self.pipetteChangeClicked)
         moveButton.clicked.connect(self.onMoveClicked)
         calButton.clicked.connect(self.onCalClicked)
+        CalibrationButton.clicked.connect(self.onCalibrationClicked)
+        CoarseCalibrationButton.clicked.connect(self.onCoarseCalClicked)
 
         self.layout.addWidget(focusButton, 1, 0)
         self.layout.addWidget(moveButton, 2, 0)
         self.layout.addWidget(calButton, 3, 0)
+        self.layout.addWidget(pipetteChangeButton, 4, 0)
+        self.layout.addWidget(CalibrationButton, 5, 0)
+        self.layout.addWidget(CoarseCalibrationButton, 6, 0)
 
         self.posLabels = [Qt.QLabel(), Qt.QLabel(), Qt.QLabel()]
         for l in self.posLabels:
@@ -803,44 +814,406 @@ class PipetteDeviceGui(Qt.QWidget):
         self.dev.sigGlobalTransformChanged.connect(self.pipetteMoved)
         self.pipetteMoved()
 
+        self.calibrateWindow = None
+
+
+    def onCalibrationClicked(self):
+
+        def checkTip():
+            for j in range(2):
+                time.sleep(1)
+                trfut = self.dev.tracker.autoCalibrate()
+                pos = self.dev.globalPosition()
+                sfut = self.dev.scopeDevice().setGlobalPosition(pos, speed='fast')
+                sfut.wait(updates=True)
+
+        def longMove(target,steps,speed='fast'):
+            target=np.array(target)
+            aRange = np.linspace(0,1,steps)
+            aRange = aRange[1:]
+            pos = self.dev.globalPosition()
+            direction = target-pos
+            p = pos
+
+            print("direction: ",direction)
+
+            #create waypoints
+
+            waypoints = []
+            for index,i in enumerate(aRange):
+                waypoints.append(pos+direction*i)
+                print("waypoint ",index,": ",pos+direction*i)
+
+
+
+            for index,point in enumerate(waypoints):
+                sfut = self.dev.scopeDevice().setGlobalPosition(point, speed)
+                pfut = self.dev._moveToGlobal(point, speed, linear=self.dev._shouldUseLinearMovement())
+                pfut.wait(updates=True)
+                
+                checkTip()
+
+                time.sleep(0.5)
+                print("step ",index," to point ", point, " done.")
+
+        def calibrationMove(target,steps,speed='slow',axis=None,height=None):
+            if axis == None:
+                return 0
+
+
+            #Move pipette tip along calibration path and store start and end location of device coordinates
+            start = self.dev.globalPosition()
+            stage = self.dev.parentDevice()
+            initialPosition = stage.getPosition()
+            #sfut = self.dev.scopeDevice().setGlobalPosition(target, speed='fast')
+            if axis == 'z':
+                sfut = self.dev.scopeDevice().setGlobalPosition(target, speed='fast')
+                sfut.wait(updates=True)
+                pfut = self.dev._moveToGlobal(target, speed='fast', linear=self.dev._shouldUseLinearMovement())
+                pfut.wait(updates=True)
+            elif axis == 'x':
+                pfut = self.dev.advance(depth=height, speed='fast')
+                pfut.wait(updates=True)
+            else:
+                pfut = self.dev._moveToGlobal(target, speed='fast', linear=self.dev._shouldUseLinearMovement())
+                pfut.wait(updates=True)
+            #sfut.wait(updates=True)
+            endPosition = stage.getPosition()
+
+            #use device coordinates of both endpoints to calculate range steps that the manipulator has to move locally for calibration
+            axisDifference = np.array(endPosition)-np.array(initialPosition)
+
+            if axis == 'x':
+                oneStep = axisDifference[0]/steps
+                print("One Step on x-Axis equals: ",oneStep)
+            if axis == 'y':
+                oneStep = axisDifference[1]/steps
+                print("One Step on y-Axis equals: ",oneStep)
+            if axis == 'z':
+                oneStep = axisDifference[2]/steps
+                print("One Step on z-Axis equals: ",oneStep)
+
+
+
+            pfut = self.dev._moveToGlobal(start, speed='fast', linear=self.dev._shouldUseLinearMovement())
+            pfut.wait(updates=True)
+            if axis == 'z':
+                sfut = self.dev.scopeDevice().setGlobalPosition(start, speed='fast')
+                sfut.wait(updates=True)
+
+            for i in range(steps):
+                if axis == 'x':
+                    pfut = stage.move(stage,rel=[oneStep,0,0], speed='slow', linear=True)
+                if axis == 'y':
+                    pfut = stage.move(stage,rel=[0,oneStep,0], speed='slow', linear=True)
+                if axis == 'z':
+                    pfut = stage.move(stage,rel=[0,0,oneStep], speed='slow', linear=True)
+                pfut.wait(updates=True)
+                pos = self.dev.globalPosition()
+                sfut = self.dev.scopeDevice().setGlobalPosition(pos, speed='fast')
+                sfut.wait(updates=True)
+                checkTip()
+
+                calibrationPos = self.dev.globalPosition()
+                calibrationStagePos =self.dev.parentDevice().getPosition()
+
+                #add new calibration point to calibration window
+                self.calibrateWindow._addCalibrationPoint(calibrationStagePos, calibrationPos)
+                self.calibrateWindow.calibration["points"].append([calibrationStagePos, calibrationPos])
+
+                print("Step ",i," done. Position: ",calibrationPos, " Stage: ",calibrationStagePos)
+
+
+            print("Movement done")
+
+
+
+
+
+
+        #open calibration Window
+        if self.calibrateWindow is None:
+            self.calibrateWindow = CalibrationWindow(self.dev.parentDevice())
+        self.calibrateWindow.show()
+        self.calibrateWindow.raise_()
+
+        #remove present calibration points
+        self.calibrateWindow.calibration["points"] = []
+        self.calibrateWindow._clearCalibration()
+
+
+
+        pos = self.dev.globalPosition()
+
+        scope = self.dev.scopeDevice()
+        surfaceDepth = scope.getSurfaceDepth()
+
+        Z = [-0.005341,-0.008826,surfaceDepth+0.00015]
+        R = 6.5E-3
+
+        print("Pipette: ", pos)
+        print("Z= ",Z)
+
+        yaw = self.dev.yawRadians()
+        pitch = self.dev.pitchRadians()
+
+        print("yaw: ",yaw, ",",math.cos(yaw),",",math.sin(yaw))
+        print("pitch: ",pitch)
+
+        aRange= np.linspace(0.1,1,10)
+        factor = 0.5
+
+        p1 = [Z[0]+math.cos(yaw)*factor*R,Z[1]+math.sin(yaw)*factor*R,surfaceDepth+0.00015]
+
+        z2 = surfaceDepth+1E-3
+
+        p2 = [p1[0]+z2*math.sin(yaw)/math.sin(pitch),p1[1]+z2*math.cos(yaw)/math.sin(pitch),z2]
+
+        p3 = [Z[0]+math.cos(yaw-90)*factor*R,Z[1]+math.sin(yaw-90)*factor*R,surfaceDepth+0.00015]
+
+        p4 = [Z[0]+math.cos(yaw+90)*factor*R,Z[1]+math.sin(yaw+90)*factor*R,surfaceDepth+0.00015]
+
+        p5 = Z
+
+        p6 = [Z[0],Z[1],z2]
+
+        longMove(p1,10,'slow')
+        calibrationMove(p2,33,speed='slow',axis='x',height = z2)
+        longMove(p3,10,'slow')
+        calibrationMove(p4,33,speed='slow',axis='y')
+        longMove(p5,10,'slow')
+        calibrationMove(p6,33,speed='slow',axis='z')
+
+        #print and save calibration to machine and close window
+
+        self.calibrateWindow.recalculate()
+
+        for point in self.calibrateWindow.calibration["points"]:
+            print(point)
+
+        self.calibrateWindow.saveCalibrationToDevice()
+
+        self.calibrateWindow.close()
+
+
+
+
     def onFocusClicked(self):
         #pdb.set_trace()
 
-        print("focus clicked",self.win)
+        #print("focus clicked",self.win)
         
 
 
         while(self.dev.moving==True):
             continue
             
-        self.dev.focusTip(speed='slow')
+        fo = self.dev.focusTip(speed='fast')
+        print(fo)
         
         #print(help(self.dev))
     def onMoveClicked(self):
-        print("move clicked",self.win)
 
-        #pos = self.dev.globalPosition()
-        #self.dev._moveToGlobal((pos[0]+10E-6,pos[1]+100E-6,pos[2]),speed='slow')
+        dev = self.dev
 
-        dz = -100E-6
-        pitch = self.dev.pitchAngle()
-        dx = dz/(math.sin(pitch))
+        print("Pitch: ", dev.pitchAngle())
+        print("Yaw: ", dev.yawAngle())
 
-        print("definition done")
-        #local x-movement
+    def onCoarseCalClicked(self):
+
+        def calculatePitchYaw(points):
+
+            from skspatial.objects import Line
+            from skspatial.objects import Points
+
+            x=[]
+            z=[]
+            y=[]
+            border = int(points.shape[0]/3)
+            for point in points2[:border]:
+                z.append(point[1][2])
+                y.append(point[1][1])
+                x.append(point[1][0])
+
+            tupel = []
+            for i in range(len(x)):
+                tupel.append([x[i],y[i],z[i]])
+
+            points = np.array(tupel)
+
+            points = Points(points)
+            first = points[0].copy()
+            last = points[-1].copy()
+            first[2] = 0
+            last[2] = 0
+            points2 = Points([first,last])
+
+            line_fit = Line.best_fit(points)
+            line_fit2 = Line.best_fit(points2)
+
+            def dotproduct(v1, v2):
+                 return sum((a*b) for a, b in zip(v1, v2))
+
+            def length(v):
+                 return math.sqrt(dotproduct(v, v))
+
+            def angle(v1, v2):
+                return math.acos(dotproduct(v1, v2) / (length(v1) * length(v2)))*(180/math.pi)
+
+            pitchVec = line_fit2.vector
+            yaw0 = [1,0,0]
+            vec=[0,0,0]
+            vec[0] = line_fit.vector[0].copy()
+            vec[1] = line_fit.vector[1].copy()
+            vec[2] = 0
+            v1 = -line_fit.vector
+            v2 = line_fit2.vector
+
+            x = [i[0] for i in points]
+            y = [i[1] for i in points]
+            z = [i[2] for i in points]
+
+            x2 = [x[0].copy(),x[-1].copy()]
+            y2 = [y[0].copy(),y[-1].copy()]
+            z2 = [0,0]
+
+            x3 = [x[0].copy(),x[0].copy()+0.0020]
+            y3 = [y[0].copy(),y[0].copy()]
+
+            test = [x2[1]-x2[0],y2[1]-y2[0],0]
+            Ex = [x3[1]-x3[0],y3[1]-y3[0],0]
+
+            self.dev._calibratedPitch = angle(line_fit.vector,test)
+            self.dev._calibratedYaw = 180 - angle(test,Ex)
+
+            print("Z-projection: ",test, " E_x: ",Ex)
+            print("pitch: ",self.dev._calibratedPitch)
+            print("yaw: ",self.dev._calibratedYaw)
+
+            self.dev.saveCalibration()
+
+ 
+
+
+        def checkTip():
+            for j in range(2):
+                time.sleep(1)
+                trfut = self.dev.tracker.autoCalibrate()
+                pos = self.dev.globalPosition()
+                sfut = self.dev.scopeDevice().setGlobalPosition(pos, speed='fast')
+                sfut.wait(updates=True)
+
+        def coarseCalibrationMove(steps,speed='slow',axis=None):
+            if axis == None:
+                return 0
+
+            start = self.dev.globalPosition()
+            stage = self.dev.parentDevice()
+
+            oneStep = 50
+
+            for i in range(steps):
+                if axis == 'x':
+                    pfut = stage.move(stage,rel=[oneStep,0,0], speed='slow', linear=True)
+                if axis == 'y':
+                    pfut = stage.move(stage,rel=[0,oneStep,0], speed='slow', linear=True)
+                if axis == 'z':
+                    pfut = stage.move(stage,rel=[0,0,oneStep], speed='slow', linear=True)
+                pfut.wait(updates=True)
+                pos = self.dev.globalPosition()
+                sfut = self.dev.scopeDevice().setGlobalPosition(pos, speed='fast')
+                sfut.wait(updates=True)
+                checkTip()
+
+                calibrationPos = self.dev.globalPosition()
+                calibrationStagePos =self.dev.parentDevice().getPosition()
+
+                #add new calibration point to calibration window
+                self.calibrateWindow._addCalibrationPoint(calibrationStagePos, calibrationPos)
+                self.calibrateWindow.calibration["points"].append([calibrationStagePos, calibrationPos])
+
+                print("Step ",i," done. Position: ",calibrationPos, " Stage: ",calibrationStagePos)
+
+
+            print("Movement done")
+
         
-        self.dev._moveToLocal((dx,0,0),speed = 'slow')
+        #open calibration Window
+        if self.calibrateWindow is None:
+            self.calibrateWindow = CalibrationWindow(self.dev.parentDevice())
+        self.calibrateWindow.show()
+        self.calibrateWindow.raise_()
 
-        time.sleep(3)
+        #remove present calibration points
+        self.calibrateWindow.calibration["points"] = []
+        self.calibrateWindow._clearCalibration()
 
-        #self.dev._moveToLocal((0,0,dz),speed = 'slow')
 
-        # #global z-movement
-        # WP2 = self.dev.globalPosition()
-        # WP2[2] += dz
-        # self.dev._moveToGlobal((WP2[0],WP2[1],WP2[2]),speed='slow')
 
-        # time.sleep(3)
+        pos = self.dev.globalPosition()
+
+        scope = self.dev.scopeDevice()
+        surfaceDepth = scope.getSurfaceDepth()
+
+        coarseCalibrationMove(10,speed='slow',axis='x')
+        coarseCalibrationMove(10,speed='slow',axis='y')
+        coarseCalibrationMove(10,speed='slow',axis='z')
+
+        #print and save calibration to machine and close window
+
+        self.calibrateWindow.recalculate()
+
+        for point in self.calibrateWindow.calibration["points"]:
+            print(point)
+
+        self.calibrateWindow.saveCalibrationToDevice()
+
+        #points = self.calibrateWindow.calibration["points"]
+
+        #calculatePitchYaw(points)
+
+        self.calibrateWindow.close()
+
+
+
+
+
+    def pipetteChangeClicked(self):
+        print("Change Pipette")
+        #self.dev.goHome(speed = 'fast')
+
+        #dz= -1
+        #dz = 1*10E-2
+        #pos = self.dev.globalPosition()
+        #WP2 = self.dev.globalPosition()
+
+        #self.dev._moveToGlobal((WP2[0],WP2[1],WP2[2]+dz),speed='fast')
+        pip = self.dev
+        manipulator = self.dev.parentDevice()
+        manipulatorHome = manipulator.homePosition()
+        manipulatorHome[2]+= 1E-2
+        assert manipulatorHome is not None, "No home position defined for %s" % manipulator.name()
+        # how much should the pipette move in global coordinates
+        globalMove = np.asarray(manipulatorHome) - np.asarray(manipulator.globalPosition())
+
+        startPosGlobal = pip.globalPosition()
+        # where should the pipette tip end up in global coordinates
+        endPosGlobal = np.asarray(startPosGlobal) + globalMove
+
+
+        #home = self.dev.parentDevice().homePosition()
+        print(endPosGlobal)
+        #self.dev._moveToLocal((-10E-4,0,0),speed = 'fast')
+        self.dev._moveToGlobal(endPosGlobal,speed='fast')
+
+
+
+        #time.sleep(3)
+        #self.dev._moveToLocal((0,0,1*10E-2),speed = 'fast')
+
+        #time.sleep(3)
+        #pos = self.dev.globalPosition()
+        #print(pos)
 
 
     def onCalClicked(self):

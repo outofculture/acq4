@@ -378,14 +378,14 @@ class PatchPipetteCellDetectState(PatchPipetteState):
         'initialTestPulseEnable': True,
         'fallbackState': 'bath',
         'autoAdvance': True,
-        'advanceMode': 'target',
+        'advanceMode': 'vertical',
         'advanceContinuous': True,
-        'advanceStepInterval': 0.1,
-        'advanceStepDistance': 1e-6,
-        'maxAdvanceDistance': None,
-        'maxAdvanceDistancePastTarget': 10e-6,
+        'advanceStepInterval': 0.1, #0.1
+        'advanceStepDistance': 1e-6, #1e-6
+        'maxAdvanceDistance': 4E-6,
+        'maxAdvanceDistancePastTarget': 10E-6, #10E-6
         'maxAdvanceDepthBelowSurface': None,
-        'advanceSpeed': 2e-6,
+        'advanceSpeed': 0.5e-6,
         'fastDetectionThreshold': 1e6,
         'slowDetectionThreshold': 0.2e6,
         'slowDetectionSteps': 3,
@@ -449,8 +449,8 @@ class PatchPipetteCellDetectState(PatchPipetteState):
             if config['advanceContinuous']:
                 # Start continuous move if needed
                 if self.contAdvanceFuture is None:
-                    print(initialPosition)
-                    print(self.getSearchEndpoint())
+                    print("InitialPosition: ",initialPosition)
+                    print("Endpoint: ",self.getSearchEndpoint())
                     self.startContinuousMove()
                 if self.contAdvanceFuture.isDone():
                     self.contAdvanceFuture.wait()  # check for move errors
@@ -624,7 +624,7 @@ class PatchPipetteSealState(PatchPipetteState):
         'initialClampHolding': 0,
         'initialTestPulseEnable': True,
         'fallbackState': 'fouled',
-        'pressureMode': 'user',   # 'auto' or 'user'
+        'pressureMode': 'auto',   # 'auto' or 'user'
         'startingPressure': -1000,
         'holdingThreshold': 100e6,
         'holdingPotential': -70e-3,
