@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import division, with_statement, print_function
 
+import os
 from collections import OrderedDict
 
 import numpy as np
@@ -32,6 +33,10 @@ triggerModes = {
     'TriggerType': {'Freerun': 'Normal'},  # QImaging 
     'Trigger': {'NORMAL': 'Normal', 'START': 'TriggerStart'},  # Hamamatsu
 }
+
+
+# TODO This is temporary until I get it right.
+os.environ["PATH"] += ";C:\\Program Files\\Micro-Manager-2.0gamma"
 
 
 class MicroManagerCamera(Camera):
