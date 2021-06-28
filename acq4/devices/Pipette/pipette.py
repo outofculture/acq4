@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import weakref
+import sys
 import math
 import numpy as np
 import pyqtgraph as pg
@@ -10,6 +11,8 @@ from six.moves import range
 import time
 
 import pdb
+
+import acq4.Manager as Manager
 
 from acq4 import getManager
 from acq4.devices.Device import Device
@@ -23,7 +26,7 @@ from ..Stage.calibration import CalibrationWindow
 from .planners import defaultMotionPlanners
 from .tracker import PipetteTracker
 
-CamModTemplate = Qt.importTemplate('.cameraModTemplate')
+CamModTemplate = Qt.importTemplate('.cameraModTemplate2') #Changed from '.cameraModTemplate'
 
 
 class Pipette(Device, OptomechDevice):
@@ -517,6 +520,7 @@ class PipetteCamModInterface(CameraModuleInterface):
         self.calibrateAxis.sigRegionChangeFinished.connect(self.calibrateAxisChanged)
         self.calibrateAxis.sigRegionChanged.connect(self.calibrateAxisChanging)
         self.ui.homeBtn.clicked.connect(self.homeClicked)
+        self.ui.followButton.clicked.connect(self.test)
         self.ui.searchBtn.clicked.connect(self.searchClicked)
         self.ui.idleBtn.clicked.connect(self.idleClicked)
         self.ui.setTargetBtn.toggled.connect(self.setTargetToggled)
@@ -529,6 +533,9 @@ class PipetteCamModInterface(CameraModuleInterface):
 
         self.transformChanged()
         self.updateCalibrateAxis()
+
+
+
 
     def setOrientationToggled(self):
         self.updateCalibrateAxis()
@@ -650,6 +657,11 @@ class PipetteCamModInterface(CameraModuleInterface):
             scene = item.scene()
             if scene is not None:
                 scene.removeItem(item)
+
+
+    def test(self):
+        while self.ui.followCheckBox.isChecked():
+            print("test")
 
     def homeClicked(self):
         self.getDevice().goHome(self.selectedSpeed())
@@ -773,6 +785,7 @@ class Axis(pg.ROI):
         pg.ROI.setAngle(self, angle, update=update)
 
 
+
 class PipetteDeviceGui(Qt.QWidget):
     def __init__(self, dev, win):
         Qt.QWidget.__init__(self)
@@ -788,10 +801,19 @@ class PipetteDeviceGui(Qt.QWidget):
 
         pipetteChangeButton = Qt.QPushButton("Change pipette")
         focusButton = Qt.QPushButton("Focus on Tip")
-        moveButton = Qt.QPushButton("Move Tip")
-        calButton = Qt.QPushButton("calibrate Tip")
-        CalibrationButton = Qt.QPushButton("Calibration")
+        moveButton = Qt.QPushButton("Unused")
+        calButton = Qt.QPushButton("Tip Autocalibration")
+        CalibrationButton = Qt.QPushButton("Fine Calibration")
         CoarseCalibrationButton = Qt.QPushButton("Coarse Calibration")
+
+        focusButton.setToolTip("Scope focusses onto pipette tip. Be aware of possible collisions with other pipettes or the chamber geometry.")
+        calButton.setToolTip("Autocalibration of the pipette-tip using reference frames. Ensure a good focus of the tip and high contrast.")
+        moveButton.setToolTip("Currently only used for testing")
+        pipetteChangeButton.setToolTip("""Pipette will go into home position and move upwards in z-direction for pipette change.""")
+        CalibrationButton.setToolTip("""A fine calibration for the manipulator once a sufficient calibration has been undergone. Calibration Points will be set automatically in a 
+            Radius of 0.5 * 6.5 mm around the home position of the stage and 150um above surface. Fit calibration points to get more precise pitch and yaw angles for long distance pipette travel.""")  
+        CoarseCalibrationButton.setToolTip("""A coarse calibration for a manipulator. Ensure that electrode has reference frames, is at least 2 mm above surface and roughly centered 
+            in X/Y coordinates of the stage. Present calibration will be overwritten once procedure is finished.""")  
 
         focusButton.clicked.connect(self.onFocusClicked)
         pipetteChangeButton.clicked.connect(self.pipetteChangeClicked)
@@ -815,6 +837,80 @@ class PipetteDeviceGui(Qt.QWidget):
         self.pipetteMoved()
 
         self.calibrateWindow = None
+        self.testWindow = None
+    def onMoveClicked(self):
+
+        man = getManager()
+        stage = man.getDevice("Stage")
+        print(stage.homePosition())
+        #task = Manager.createTask()
+
+    def onMoveClicked3(self):
+        self.testWindow = None
+        self.testWindow = pg.GraphicsLayoutWidget()
+        self.testWindow.show()
+        self.testWindow.raise_()
+
+
+        win = self.testWindow
+
+        plots = [
+            win.addPlot(labels={"left": ("x position", "um"), "bottom": ("time", "s")}),
+            win.addPlot(labels={"left": ("y position", "um"), "bottom": ("time", "s")}),
+            win.addPlot(labels={"left": ("z position", "um"), "bottom": ("time", "s")}),
+        ]
+        # plots[1].setYLink(plots[0])
+        # plots[2].setYLink(plots[0])
+        plots[1].setXLink(plots[0])
+        plots[2].setXLink(plots[0])
+        win.nextRow()
+        diffplots = [
+            win.addPlot(labels={"left": ("dx", "um/s"), "bottom": ("time", "s")}),
+            win.addPlot(labels={"left": ("dy", "um/s"), "bottom": ("time", "s")}),
+            win.addPlot(labels={"left": ("dz", "um/s"), "bottom": ("time", "s")}),
+        ]
+        diffplots[1].setYLink(diffplots[0])
+        diffplots[2].setYLink(diffplots[0])
+        diffplots[1].setXLink(diffplots[0])
+        diffplots[2].setXLink(diffplots[0])
+
+        start = pg.ptime.time()
+        positions = [[], [], []]
+        times = []
+
+        for i in range(1, 9):
+            sys.argv.extend(['-d', f'Clamp{i}', '-d', f'Pressure{i}'])
+
+        acq4dev = self.dev
+        dev = acq4dev.parentDevice().dev
+        start_pos = dev.get_pos(timeout=-1)
+
+
+        def recordPosition():
+            now = pg.ptime.time() - start
+            times.append(now)
+            pos = dev.get_pos(timeout=-1)
+            for i in range(3):
+                positions[i].append(pos[i])
+            time.sleep(0.002)
+
+
+        move = acq4dev.goHome()
+        while not move.isDone():
+            recordPosition()
+
+        move = dev.goto_pos(start_pos, 4000, simultaneous=False)
+        while not move.finished:
+            recordPosition()
+
+        for i in range(3):
+            plots[i].clear()
+            plots[i].plot(times, positions[i], symbol="o", symbolSize=5)
+            diffplots[i].clear()
+            diffplots[i].plot(times[:-1], np.diff(positions[i]) / np.diff(times), symbol="o", symbolsize=5)
+
+
+
 
 
     def onCalibrationClicked(self):
@@ -947,8 +1043,11 @@ class PipetteDeviceGui(Qt.QWidget):
 
         scope = self.dev.scopeDevice()
         surfaceDepth = scope.getSurfaceDepth()
+        man = getManager()
+        stage = man.getDevice("Stage")
+        stage_home = stage.homePosition()
 
-        Z = [-0.005341,-0.008826,surfaceDepth+0.00015]
+        Z = [stage_home[0],stage_home[1],surfaceDepth+0.00015]
         R = 6.5E-3
 
         print("Pipette: ", pos)
@@ -1012,12 +1111,79 @@ class PipetteDeviceGui(Qt.QWidget):
         print(fo)
         
         #print(help(self.dev))
-    def onMoveClicked(self):
 
-        dev = self.dev
 
-        print("Pitch: ", dev.pitchAngle())
-        print("Yaw: ", dev.yawAngle())
+
+    def onMoveClicked2(self):
+
+        
+        app = pg.mkQApp()
+        win = pg.GraphicsLayoutWidget()
+        win.show()
+        plots = [
+            win.addPlot(labels={"left": ("x position", "um"), "bottom": ("time", "s")}),
+            win.addPlot(labels={"left": ("y position", "um"), "bottom": ("time", "s")}),
+            win.addPlot(labels={"left": ("z position", "um"), "bottom": ("time", "s")}),
+        ]
+        # plots[1].setYLink(plots[0])
+        # plots[2].setYLink(plots[0])
+        plots[1].setXLink(plots[0])
+        plots[2].setXLink(plots[0])
+        win.nextRow()
+        diffplots = [
+            win.addPlot(labels={"left": ("dx", "um/s"), "bottom": ("time", "s")}),
+            win.addPlot(labels={"left": ("dy", "um/s"), "bottom": ("time", "s")}),
+            win.addPlot(labels={"left": ("dz", "um/s"), "bottom": ("time", "s")}),
+        ]
+        diffplots[1].setYLink(diffplots[0])
+        diffplots[2].setYLink(diffplots[0])
+        diffplots[1].setXLink(diffplots[0])
+        diffplots[2].setXLink(diffplots[0])
+
+        start = pg.ptime.time()
+        positions = [[], [], []]
+        times = []
+
+        for i in range(1, 9):
+            sys.argv.extend(['-d', f'Clamp{i}', '-d', f'Pressure{i}'])
+
+        acq4dev = self.dev
+        dev = acq4dev.parentDevice().dev
+        start_pos = dev.get_pos(timeout=-1)
+
+
+        def recordPosition():
+            now = pg.ptime.time() - start
+            times.append(now)
+            pos = dev.get_pos(timeout=-1)
+            for i in range(3):
+                positions[i].append(pos[i])
+            time.sleep(0.002)
+
+
+        move = acq4dev.goHome()
+        while not move.isDone():
+            recordPosition()
+
+        # move = dev.goto_pos(**{'pos': (12129.154296875, 18066.560546875, 5156.076171875), 'speed': 4000.0, 'simultaneous': True, 'linear': True, 'max_acceleration': 0})
+        # while not move.finished:
+        #     recordPosition()
+
+        # move = dev.goto_pos(**{'pos': [3000.075927734375, 5000.39208984375, 501.1719970703125], 'speed': 1000, 'simultaneous': True, 'linear': False, 'max_acceleration': 0})
+        # while not move.finished:
+        #     recordPosition()
+
+        move = dev.goto_pos(start_pos, 4000, simultaneous=False)
+        while not move.finished:
+            recordPosition()
+
+        for i in range(3):
+            plots[i].clear()
+            plots[i].plot(times, positions[i], symbol="o", symbolSize=5)
+            diffplots[i].clear()
+            diffplots[i].plot(times[:-1], np.diff(positions[i]) / np.diff(times), symbol="o", symbolsize=5)
+
+        #app.exec_()
 
     def onCoarseCalClicked(self):
 
@@ -1103,6 +1269,9 @@ class PipetteDeviceGui(Qt.QWidget):
                 sfut = self.dev.scopeDevice().setGlobalPosition(pos, speed='fast')
                 sfut.wait(updates=True)
 
+
+
+
         def coarseCalibrationMove(steps,speed='slow',axis=None):
             if axis == None:
                 return 0
@@ -1140,7 +1309,7 @@ class PipetteDeviceGui(Qt.QWidget):
         
         #open calibration Window
         if self.calibrateWindow is None:
-            self.calibrateWindow = CalibrationWindow(self.dev.parentDevice())
+            self.calibrateWindow = CalibrationWindow(self,win)
         self.calibrateWindow.show()
         self.calibrateWindow.raise_()
 
@@ -1226,3 +1395,9 @@ class PipetteDeviceGui(Qt.QWidget):
         pos = self.dev.globalPosition()
         for i in range(3):
             self.posLabels[i].setText("%0.3g um" % (pos[i] * 1e6))
+
+class testWindow(Qt.widget):
+    def __init__(self, dev, win):
+        Qt.QWidget.__init__(self)
+        self.win = win
+        self.dev = dev

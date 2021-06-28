@@ -166,6 +166,8 @@ class ApproachMotionPlanner(PipetteMotionPlanner):
 
         target = pip.targetPosition()
 
+
+
         return pip._movePath(self.approachPath(target, speed))
     
     def approachPath(self, target, speed):
@@ -194,8 +196,8 @@ class ApproachMotionPlanner(PipetteMotionPlanner):
         # target in local coordinates
         ltarget = pip.mapFromGlobal(target)
 
-        #EDIT: Introduce small z-offset for cell detection from above
-        ltarget[2] += 2E-6
+        #Ronny: Introduce small z-offset for cell detection from above
+        ltarget[2] += 10e-6
 
         # compute approach position (axis aligned to target, at standby depth or higher)
         dz2 = max(0, stbyDepth - target[2])
@@ -212,6 +214,8 @@ class ApproachMotionPlanner(PipetteMotionPlanner):
             if (closest[2] > stby[2]) and (np.linalg.norm(stby - closest) > 1e-6):
                 path.append([pip.mapToGlobal(closest), speed, self.shouldUseLinearMotion()])
             path.append([pip.mapToGlobal(stby), speed, self.shouldUseLinearMotion()])
+
+        path.append([pip.mapToGlobal(ltarget), speed, self.shouldUseLinearMotion()]) #Ronny: movement above the target location. Don't know why it is not included in the first place.
 
         return path
 

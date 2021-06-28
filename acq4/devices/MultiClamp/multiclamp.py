@@ -251,6 +251,12 @@ class MultiClamp(PatchClamp):
         self.mc.autoFastComp()
         self.mc.autoSlowComp()
 
+    def autoFastCapComp(self):
+        self.mc.autoFastComp()
+
+    def autoSlowCapComp(self):
+        self.mc.autoSlowComp()
+        
     def listSignals(self, mode):
         return self.mc.listSignals(mode)
         

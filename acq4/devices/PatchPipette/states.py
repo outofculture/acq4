@@ -198,6 +198,117 @@ class PatchPipetteOutState(PatchPipetteState):
         'initialTestPulseEnable': False,
         'finishPatchRecord': True,
     }
+class TestState(PatchPipetteState):
+    stateName = 'test'
+    def __init__(self, *args, **kwds):
+        PatchPipetteState.__init__(self, *args, **kwds)
+
+    _defaultConfig = {
+        'initialPressure': 3500.,  # 0.5 PSI
+        'initialPressureSource': 'regulator',
+        'initialClampMode': 'VC',
+        'initialClampHolding': -10E-3,
+        'initialTestPulseEnable': True,
+        'bathThreshold': 50e6,
+        'breakThreshold': -1e6,
+        'clogThreshold': 1e6,
+        'targetDistanceThreshold': 10e-6
+    }
+    
+    def run(self):
+        self.monitorTestPulse()
+        config = self.config
+        dev = self.dev
+        initialResistance = None
+        bathResistances = []
+
+        tps = self.getTestPulses(timeout=0.2)
+        tp = tps[-1]
+        #print(help(tp))
+        #print(tp.clampMode())
+        print(tp.analysis())
+        #print(tp.getFitData())
+
+
+        while True:
+            self._checkStop()
+            tps = self.getTestPulses(timeout=0.2)
+            if len(tps) == 0:
+                continue
+            tp = tps[-1]
+
+            
+
+            # pull in all new test pulses (hopefully only one since the last time we checked)
+            #tps = self.getTestPulses(timeout=0.2)
+
+class CharacterizationState(PatchPipetteState):
+    stateName = 'Characterization'
+    def __init__(self, *args, **kwds):
+        PatchPipetteState.__init__(self, *args, **kwds)
+        win = self.dev.testWindow()
+        plots = win.addPlot(labels={"left": ("x position", "um"), "bottom": ("time", "s")})
+
+        #config = self.config
+        patchrec = self.dev.patchRecord()
+        patchrec['wholeCellStartTime'] = ptime.time()
+        patchrec['wholeCellPosition'] = tuple(self.dev.pipetteDevice.globalPosition())
+
+        while ptime.time() - patchrec['wholeCellStartTime'] < 3:
+            # TODO: monitor for cell loss
+            #self._checkStop()
+            time.sleep(0.1)
+
+        patchrec = self.dev.patchRecord()
+        patchrec['wholeCellStopTime'] = ptime.time()
+        print(self.config['nextState'])
+        print(patchrec['wholeCellPosition'])
+        print(patchrec['wholeCellStopTime']-patchrec['wholeCellStartTime'])
+
+
+    _defaultConfig = {
+        'nextState': 'out',
+        #'initialPressure': 3500.,  # 0.5 PSI
+        'initialPressureSource': 'atmosphere',
+        'initialClampMode': 'VC',
+        'initialClampHolding': -60e-3,
+        'initialTestPulseEnable': True,
+        'initialAutoBiasEnable': True,
+        'initialAutoBiasTarget': -60e-3,
+        'numSweeps': 20,
+        'currentSteps': 40e-3,
+        'sweepDuration': 3,
+        #'bathThreshold': 50e6,
+        #'breakThreshold': -1e6,
+        #'clogThreshold': 1e6,
+        #'targetDistanceThreshold': 10e-6
+        }
+
+
+    def run(self):
+
+        return self.config['nextState']
+        
+    
+ #   def run(self):
+ #       config = self.config
+ #       patchrec = self.dev.patchRecord()
+ #       patchrec['wholeCellStartTime'] = ptime.time()
+ #       patchrec['wholeCellPosition'] = tuple(self.dev.pipetteDevice.globalPosition())
+
+        # TODO: Option to switch to I=0 for a few seconds to get initial RMP decay
+
+ #       while True:
+ #           # TODO: monitor for cell loss
+ #           self._checkStop()
+ #           time.sleep(0.1)
+
+ #   def cleanup(self):
+ #       patchrec = self.dev.patchRecord()
+  #      patchrec['wholeCellStopTime'] = ptime.time()
+  #      PatchPipetteState.cleanup(self)
+
+
 
 
 class PatchPipetteApproachState(PatchPipetteState):
@@ -287,14 +398,14 @@ class PatchPipetteBathState(PatchPipetteState):
         PatchPipetteState.__init__(self, *args, **kwds)
 
     _defaultConfig = {
-        'initialPressure': 3500.,  # 0.5 PSI
+        'initialPressure': 20000.,  # 0.5 PSI
         'initialPressureSource': 'regulator',
         'initialClampMode': 'VC',
         'initialClampHolding': 0,
         'initialTestPulseEnable': True,
         'bathThreshold': 50e6,
         'breakThreshold': -1e6,
-        'clogThreshold': 1e6,
+        'clogThreshold': 3e6, #Ronny :  default=1e6
         'targetDistanceThreshold': 10e-6
     }
     
@@ -381,14 +492,14 @@ class PatchPipetteCellDetectState(PatchPipetteState):
         'advanceMode': 'vertical',
         'advanceContinuous': True,
         'advanceStepInterval': 0.1, #0.1
-        'advanceStepDistance': 1e-6, #1e-6
-        'maxAdvanceDistance': 4E-6,
-        'maxAdvanceDistancePastTarget': 10E-6, #10E-6
-        'maxAdvanceDepthBelowSurface': None,
-        'advanceSpeed': 0.5e-6,
+        'advanceStepDistance': 0.02e-6, #1e-6
+        'maxAdvanceDistance': 10E-6,
+        'maxAdvanceDistancePastTarget': 0, #10E-6
+        'maxAdvanceDepthBelowSurface': 0,
+        'advanceSpeed': 0.1e-7,
         'fastDetectionThreshold': 1e6,
         'slowDetectionThreshold': 0.2e6,
-        'slowDetectionSteps': 3,
+        'slowDetectionSteps': 6,
         'breakThreshold': -1e6,
     }
 
@@ -487,6 +598,8 @@ class PatchPipetteCellDetectState(PatchPipetteState):
         surface = pip.scopeDevice().getSurfaceDepth()
         target = np.array(pip.targetPosition())
 
+        print("surface: ", surface, " target: ", target)
+
         # what direction are we moving?
         if config['advanceMode'] == 'vertical':
             direction = np.array([0.0, 0.0, -1.0])
@@ -502,7 +615,8 @@ class PatchPipetteCellDetectState(PatchPipetteState):
 
         # max search distance
         if config['maxAdvanceDistance'] is not None:
-            endpoint = pos + direction * config['maxAdvanceDistance']            
+            endpoint = pos + direction * config['maxAdvanceDistance'] 
+            print("Endpoint after first calculation: ", endpoint)           
 
         # max surface depth 
         if config['maxAdvanceDepthBelowSurface'] is not None and direction[2] < 0:
@@ -512,6 +626,7 @@ class PatchPipetteCellDetectState(PatchPipetteState):
             # is the surface depth endpoint closer?
             if endpoint is None or np.linalg.norm(endpoint-pos) > np.linalg.norm(depthEndpt-pos):
                 endpoint = depthEndpt
+                print("Endpoint after surface depth consideration: ", endpoint)  
 
         # max distance past target
         if config['advanceMode'] == 'target' and config['maxAdvanceDistancePastTarget'] is not None:
@@ -519,6 +634,7 @@ class PatchPipetteCellDetectState(PatchPipetteState):
             # is the target endpoint closer?
             if endpoint is None or np.linalg.norm(endpoint-pos) > np.linalg.norm(targetEndpt-pos):
                 endpoint = targetEndpt
+                print("Endpoint after past target consideration: ", endpoint)
 
         if endpoint is None:
             raise Exception("Cell detect state requires one of maxAdvanceDistance, maxAdvanceDepthBelowSurface, or maxAdvanceDistancePastTarget.")
@@ -616,6 +732,12 @@ class PatchPipetteSealState(PatchPipetteState):
     resetDelay : float
         Wait time (seconds) after maxVacuum is reached, before restarting pressure ramp.
 
+
+
+
+
+    pip.stateManager().stateConfig["seal"] = {'sealThreshold': 1e9,'autoSealTimeout': 30.0} 
+
     """
     stateName = 'seal'
 
@@ -632,8 +754,8 @@ class PatchPipetteSealState(PatchPipetteState):
         'breakInThreshold': 10e-12,
         'nSlopeSamples': 5,
         'autoSealTimeout': 30.0,
-        'maxVacuum': -3e3, #changed from -7e3
-        'pressureChangeRates': [(0.5e6, -100), (100e6, 0), (-1e6, 200)], #initially 1e6,150e6,None
+        'maxVacuum': -8e3, #changed from -7e3
+        'pressureChangeRates': [(None, -4000), (150e6, 0), (-1e6, 200)], #initially 1e6,150e6,None
         'delayBeforePressure': 0.0,
         'delayAfterSeal': 5.0,
         'afterSealPressure': -1000,
@@ -744,13 +866,15 @@ class PatchPipetteSealState(PatchPipetteState):
                         pressure += change
                         break
                 
+                            ###################################################################################make changes here to seal right
+
                 # here, if the maxVacuum has been achieved and we are still sealing, cycle back to 0 and redo the pressure change
-                if pressure <= config['maxVacuum']:
-                    dev.pressureDevice.setPressure(source='atmosphere', pressure=0)
-                    self.sleep(config['resetDelay'])
-                    pressure = 0
-                    dev.pressureDevice.setPressure(source='regulator', pressure=pressure)
-                    continue
+                #if pressure <= config['maxVacuum']:
+                #    dev.pressureDevice.setPressure(source='atmosphere', pressure=0)
+                #    self.sleep(config['resetDelay'])
+                #    pressure = 0
+                #    dev.pressureDevice.setPressure(source='regulator', pressure=pressure)
+                #    continue
 
                 self.setState('Rpip slope: %g MOhm/sec   Pressure: %g Pa' % (slope/1e6, pressure))
                 dev.pressureDevice.setPressure(source='regulator', pressure=pressure)
@@ -813,9 +937,9 @@ class PatchPipetteCellAttachedState(PatchPipetteState):
                 return
             
             cap = tp.analysis()['capacitance']
-            # if cap > config['breakInThreshold']:
-            #     patchrec['spontaneousBreakin'] = True
-            #     return 'break in'
+            if cap > config['breakInThreshold']:
+                patchrec['spontaneousBreakin'] = True
+                return 'break in'
 
             patchrec['resistanceBeforeBreakin'] = tp.analysis()['steadyStateResistance']
             patchrec['capacitanceBeforeBreakin'] = cap
@@ -1021,7 +1145,7 @@ class PatchPipetteCleanState(PatchPipetteState):
         'initialTestPulseEnable': False,
         'cleanSequence': [(-35e3, 1.0), (100e3, 1.0)] * 5,
         'rinseSequence': [(-35e3, 3.0), (100e3, 10.0)],
-        'approachHeight': 5e-3,
+        'approachHeight': 2e-3,
         'fallbackState': 'out',
         'finishPatchRecord': True,
     }
