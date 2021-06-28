@@ -1,0 +1,536 @@
+LogEntry_0:
+    message: 'Starting Manager configuration from C:\\Users\\autopatch\\acq4\\acq4\\config\\default.cfg'
+    timestamp: '2020.12.15 19:50:50'
+    importance: 5
+    msgType: 'status'
+    id: 1
+    currentDir: None
+    exception: None
+LogEntry_1:
+    message: "  === Configuring device 'DAQ' ==="
+    timestamp: '2020.12.15 19:50:50'
+    importance: 5
+    msgType: 'status'
+    id: 2
+    currentDir: None
+    exception: None
+LogEntry_2:
+    message: "  === Configuring device 'Clamp1' ==="
+    timestamp: '2020.12.15 19:50:50'
+    importance: 5
+    msgType: 'status'
+    id: 3
+    currentDir: None
+    exception: None
+LogEntry_3:
+    message: "  === Configuring device 'Clamp2' ==="
+    timestamp: '2020.12.15 19:50:52'
+    importance: 5
+    msgType: 'status'
+    id: 4
+    currentDir: None
+    exception: None
+LogEntry_4:
+    message: "  === Configuring device 'Clamp3' ==="
+    timestamp: '2020.12.15 19:50:52'
+    importance: 5
+    msgType: 'status'
+    id: 5
+    currentDir: None
+    exception: None
+LogEntry_5:
+    message: "  === Configuring device 'Clamp4' ==="
+    timestamp: '2020.12.15 19:50:52'
+    importance: 5
+    msgType: 'status'
+    id: 6
+    currentDir: None
+    exception: None
+LogEntry_6:
+    message: "  === Configuring device 'Clamp5' ==="
+    timestamp: '2020.12.15 19:50:54'
+    importance: 5
+    msgType: 'status'
+    id: 7
+    currentDir: None
+    exception: None
+LogEntry_7:
+    message: "  === Configuring device 'Clamp6' ==="
+    timestamp: '2020.12.15 19:50:54'
+    importance: 5
+    msgType: 'status'
+    id: 8
+    currentDir: None
+    exception: None
+LogEntry_8:
+    message: "  === Configuring device 'Clamp7' ==="
+    timestamp: '2020.12.15 19:50:54'
+    importance: 5
+    msgType: 'status'
+    id: 9
+    currentDir: None
+    exception: None
+LogEntry_9:
+    message: "  === Configuring device 'Clamp8' ==="
+    timestamp: '2020.12.15 19:50:54'
+    importance: 5
+    msgType: 'status'
+    id: 10
+    currentDir: None
+    exception: None
+LogEntry_10:
+    message: "  === Configuring device 'Stage' ==="
+    timestamp: '2020.12.15 19:50:57'
+    importance: 5
+    msgType: 'status'
+    id: 11
+    currentDir: None
+    exception: None
+LogEntry_11:
+    message: "  === Configuring device 'ObjectiveChanger' ==="
+    timestamp: '2020.12.15 19:50:57'
+    importance: 5
+    msgType: 'status'
+    id: 12
+    currentDir: None
+    exception: None
+LogEntry_12:
+    message: "  === Configuring device 'Microscope' ==="
+    timestamp: '2020.12.15 19:50:57'
+    importance: 5
+    msgType: 'status'
+    id: 13
+    currentDir: None
+    exception: None
+LogEntry_13:
+    message: "  === Configuring device 'Light' ==="
+    timestamp: '2020.12.15 19:50:57'
+    importance: 5
+    msgType: 'status'
+    id: 14
+    currentDir: None
+    exception: None
+LogEntry_14:
+    message: "  === Configuring device 'GFP_FilterCube' ==="
+    timestamp: '2020.12.15 19:50:58'
+    importance: 5
+    msgType: 'status'
+    id: 15
+    currentDir: None
+    exception: None
+LogEntry_15:
+    message: "  === Configuring device 'FilterTurret' ==="
+    timestamp: '2020.12.15 19:50:58'
+    importance: 5
+    msgType: 'status'
+    id: 16
+    currentDir: None
+    exception: None
+LogEntry_16:
+    message: "  === Configuring device 'Camera' ==="
+    timestamp: '2020.12.15 19:50:58'
+    importance: 5
+    msgType: 'status'
+    id: 17
+    currentDir: None
+    exception: None
+LogEntry_17:
+    message: "  === Configuring device 'Sensapex1' ==="
+    timestamp: '2020.12.15 19:50:58'
+    importance: 5
+    msgType: 'status'
+    id: 18
+    currentDir: None
+    exception: None
+LogEntry_18:
+    message: "  === Configuring device 'Sensapex2' ==="
+    timestamp: '2020.12.15 19:50:59'
+    importance: 5
+    msgType: 'status'
+    id: 19
+    currentDir: None
+    exception: None
+LogEntry_19:
+    message: "  === Configuring device 'Sensapex3' ==="
+    timestamp: '2020.12.15 19:50:59'
+    importance: 5
+    msgType: 'status'
+    id: 20
+    currentDir: None
+    exception: None
+LogEntry_20:
+    message: "  === Configuring device 'Sensapex4' ==="
+    timestamp: '2020.12.15 19:50:59'
+    importance: 5
+    msgType: 'status'
+    id: 21
+    currentDir: None
+    exception: None
+LogEntry_21:
+    message: "  === Configuring device 'Sensapex5' ==="
+    timestamp: '2020.12.15 19:51:00'
+    importance: 5
+    msgType: 'status'
+    id: 22
+    currentDir: None
+    exception: None
+LogEntry_22:
+    message: "  === Configuring device 'Sensapex6' ==="
+    timestamp: '2020.12.15 19:51:00'
+    importance: 5
+    msgType: 'status'
+    id: 23
+    currentDir: None
+    exception: None
+LogEntry_23:
+    message: "  === Configuring device 'Sensapex7' ==="
+    timestamp: '2020.12.15 19:51:00'
+    importance: 5
+    msgType: 'status'
+    id: 24
+    currentDir: None
+    exception: None
+LogEntry_24:
+    message: "  === Configuring device 'Sensapex8' ==="
+    timestamp: '2020.12.15 19:51:00'
+    importance: 5
+    msgType: 'status'
+    id: 25
+    currentDir: None
+    exception: None
+LogEntry_25:
+    message: "  === Configuring device 'Pipette1' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 26
+    currentDir: None
+    exception: None
+LogEntry_26:
+    message: "  === Configuring device 'Pipette2' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 27
+    currentDir: None
+    exception: None
+LogEntry_27:
+    message: "  === Configuring device 'Pipette3' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 28
+    currentDir: None
+    exception: None
+LogEntry_28:
+    message: "  === Configuring device 'Pipette4' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 29
+    currentDir: None
+    exception: None
+LogEntry_29:
+    message: "  === Configuring device 'Pipette5' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 30
+    currentDir: None
+    exception: None
+LogEntry_30:
+    message: "  === Configuring device 'Pipette6' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 31
+    currentDir: None
+    exception: None
+LogEntry_31:
+    message: "  === Configuring device 'Pipette7' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 32
+    currentDir: None
+    exception: None
+LogEntry_32:
+    message: "  === Configuring device 'Pipette8' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 33
+    currentDir: None
+    exception: None
+LogEntry_33:
+    message: "  === Configuring device 'Pressure1' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 34
+    currentDir: None
+    exception: None
+LogEntry_34:
+    message: "  === Configuring device 'Pressure2' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 35
+    currentDir: None
+    exception: None
+LogEntry_35:
+    message: "  === Configuring device 'Pressure3' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 36
+    currentDir: None
+    exception: None
+LogEntry_36:
+    message: "  === Configuring device 'Pressure4' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 37
+    currentDir: None
+    exception: None
+LogEntry_37:
+    message: "  === Configuring device 'Pressure5' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 38
+    currentDir: None
+    exception: None
+LogEntry_38:
+    message: "  === Configuring device 'Pressure6' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 39
+    currentDir: None
+    exception: None
+LogEntry_39:
+    message: "  === Configuring device 'Pressure7' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 40
+    currentDir: None
+    exception: None
+LogEntry_40:
+    message: "  === Configuring device 'Pressure8' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 41
+    currentDir: None
+    exception: None
+LogEntry_41:
+    message: "  === Configuring device 'PatchPipette1' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 42
+    currentDir: None
+    exception: None
+LogEntry_42:
+    message: "  === Configuring device 'PatchPipette2' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 43
+    currentDir: None
+    exception: None
+LogEntry_43:
+    message: "  === Configuring device 'PatchPipette3' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 44
+    currentDir: None
+    exception: None
+LogEntry_44:
+    message: "  === Configuring device 'PatchPipette4' ==="
+    timestamp: '2020.12.15 19:51:01'
+    importance: 5
+    msgType: 'status'
+    id: 45
+    currentDir: None
+    exception: None
+LogEntry_45:
+    message: "  === Configuring device 'PatchPipette5' ==="
+    timestamp: '2020.12.15 19:51:02'
+    importance: 5
+    msgType: 'status'
+    id: 46
+    currentDir: None
+    exception: None
+LogEntry_46:
+    message: "  === Configuring device 'PatchPipette6' ==="
+    timestamp: '2020.12.15 19:51:02'
+    importance: 5
+    msgType: 'status'
+    id: 47
+    currentDir: None
+    exception: None
+LogEntry_47:
+    message: "  === Configuring device 'PatchPipette7' ==="
+    timestamp: '2020.12.15 19:51:02'
+    importance: 5
+    msgType: 'status'
+    id: 48
+    currentDir: None
+    exception: None
+LogEntry_48:
+    message: "  === Configuring device 'PatchPipette8' ==="
+    timestamp: '2020.12.15 19:51:02'
+    importance: 5
+    msgType: 'status'
+    id: 49
+    currentDir: None
+    exception: None
+LogEntry_49:
+    message: '=== Device configuration complete ==='
+    timestamp: '2020.12.15 19:51:02'
+    importance: 5
+    msgType: 'status'
+    id: 50
+    currentDir: None
+    exception: None
+LogEntry_50:
+    message: '=== Setting base directory: C:\\Users\\Sensapex\\data ==='
+    timestamp: '2020.12.15 19:51:02'
+    importance: 5
+    msgType: 'status'
+    id: 51
+    currentDir: None
+    exception: None
+LogEntry_51:
+    message: 'No log directory set. Log messages will not be stored.'
+    timestamp: '2020.12.15 19:51:02'
+    importance: 8
+    msgType: 'warning'
+    id: 52
+    docs: ['userGuide/dataManagement.html#notes-and-logs']
+    currentDir: 'C:\\Users\\Sensapex\\data'
+    exception: None
+LogEntry_52:
+    message: 'Manager configuration complete.'
+    timestamp: '2020.12.15 19:51:02'
+    importance: 5
+    msgType: 'status'
+    id: 53
+    currentDir: 'C:\\Users\\Sensapex\\data'
+    exception: None
+LogEntry_53:
+    message: 'ACQ4 version 0.9.3+g68d0acbe started.'
+    timestamp: '2020.12.15 19:51:02'
+    importance: 9
+    msgType: 'status'
+    id: 54
+    currentDir: 'C:\\Users\\Sensapex\\data'
+    exception: None
+LogEntry_54:
+    message: 'Error while listing files in C:\\Users\\Sensapex\\data:'
+    timestamp: '2020.12.15 19:56:35'
+    importance: 5
+    msgType: 'error'
+    id: 55
+    traceback: ['  File "C:\\Users\\autopatch\\.conda\\envs\\acq4\\lib\\runpy.py", line 193, in _run_module_as_main\n    "__main__", mod_spec)\n', '  File "C:\\Users\\autopatch\\.conda\\envs\\acq4\\lib\\runpy.py", line 85, in _run_code\n    exec(code, run_globals)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\__main__.py", line 141, in <module>\n    app.exec_()\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\Manager\\Manager.py", line 196, in loadSelectedModule\n    self.loadConfiguredModule(item.confModName)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\Manager\\Manager.py", line 203, in loadConfiguredModule\n    self.manager.loadDefinedModule(mod)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\Manager.py", line 594, in loadDefinedModule\n    mod = self.loadModule(mod, name, config, forceReload=forceReload, execPath=execPath, importMod=importMod)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\Manager.py", line 533, in loadModule\n    mod = modclass(self, name, config)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\DataManager\\DataManagerModule.py", line 57, in __init__\n    self.baseDirChanged()\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\DataManager\\DataManagerModule.py", line 93, in baseDirChanged\n    self.ui.fileTreeWidget.setBaseDirHandle(dh)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\util\\DirTreeWidget\\DirTreeWidget.py", line 161, in setBaseDirHandle\n    self.rebuildChildren(self.invisibleRootItem())\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\util\\DirTreeWidget\\DirTreeWidget.py", line 255, in rebuildChildren\n    files = handle.ls(sortMode=self.sortMode)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\util\\DataManager.py", line 594, in ls\n    self._updateLsCache(sortMode)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\util\\DataManager.py", line 608, in _updateLsCache\n    printExc("Error while listing files in %s:" % self.name())\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\util\\debug.py", line 47, in printExc\n    acq4.Manager.logExc(msg=msg, msgType=msgType)\n', '------- exception caught ---------->\n']
+    currentDir: 'C:\\Users\\Sensapex\\data'
+    exception:
+        message: "FileNotFoundError: [WinError 3] Das System kann den angegebenen Pfad nicht finden: 'C:\\\\Users\\\\Sensapex\\\\data'"
+        traceback: ['  File "C:\\Users\\autopatch\\.conda\\envs\\acq4\\lib\\runpy.py", line 193, in _run_module_as_main\n    "__main__", mod_spec)\n', '  File "C:\\Users\\autopatch\\.conda\\envs\\acq4\\lib\\runpy.py", line 85, in _run_code\n    exec(code, run_globals)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\__main__.py", line 141, in <module>\n    app.exec_()\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\Manager\\Manager.py", line 196, in loadSelectedModule\n    self.loadConfiguredModule(item.confModName)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\Manager\\Manager.py", line 203, in loadConfiguredModule\n    self.manager.loadDefinedModule(mod)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\Manager.py", line 594, in loadDefinedModule\n    mod = self.loadModule(mod, name, config, forceReload=forceReload, execPath=execPath, importMod=importMod)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\Manager.py", line 533, in loadModule\n    mod = modclass(self, name, config)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\DataManager\\DataManagerModule.py", line 57, in __init__\n    self.baseDirChanged()\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\DataManager\\DataManagerModule.py", line 93, in baseDirChanged\n    self.ui.fileTreeWidget.setBaseDirHandle(dh)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\util\\DirTreeWidget\\DirTreeWidget.py", line 161, in setBaseDirHandle\n    self.rebuildChildren(self.invisibleRootItem())\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\util\\DirTreeWidget\\DirTreeWidget.py", line 255, in rebuildChildren\n    files = handle.ls(sortMode=self.sortMode)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\util\\DataManager.py", line 594, in ls\n    self._updateLsCache(sortMode)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\util\\DataManager.py", line 608, in _updateLsCache\n    printExc("Error while listing files in %s:" % self.name())\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\util\\debug.py", line 47, in printExc\n    acq4.Manager.logExc(msg=msg, msgType=msgType)\n', '------- exception caught ---------->\n', 'Traceback (most recent call last):\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\util\\DataManager.py", line 606, in _updateLsCache\n    files = os.listdir(self.name())\n']
+LogEntry_55:
+    message: 'Unexpected error: '
+    timestamp: '2020.12.15 19:56:35'
+    importance: 5
+    msgType: 'error'
+    id: 56
+    currentDir: 'C:\\Users\\Sensapex\\data'
+    exception:
+        message: 'ValueError: Path C:\\Users\\Sensapex\\data does not exist'
+        traceback: ['Traceback (most recent call last):\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\DataManager\\DataManagerModule.py", line 159, in baseDirTextChanged\n    raise ValueError("Path %s does not exist" % path)\n']
+LogEntry_56:
+    message: 'Unexpected error: '
+    timestamp: '2020.12.15 19:56:45'
+    importance: 5
+    msgType: 'error'
+    id: 57
+    currentDir: 'C:\\Users\\Sensapex\\data'
+    exception:
+        message: 'ValueError: Path C:\\Users\\Sensapex\\data does not exist'
+        traceback: ['Traceback (most recent call last):\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\DataManager\\DataManagerModule.py", line 159, in baseDirTextChanged\n    raise ValueError("Path %s does not exist" % path)\n']
+LogEntry_57:
+    message: 'Unexpected error: '
+    timestamp: '2020.12.15 19:56:49'
+    importance: 5
+    msgType: 'error'
+    id: 58
+    currentDir: 'C:\\Users\\Sensapex\\data'
+    exception:
+        message: "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\Users\\\\Sensapex\\\\data\\\\.index'"
+        traceback: ['Traceback (most recent call last):\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\DataManager\\DataManagerModule.py", line 192, in newFolder\n    cdir.createIndex()\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\util\\DataManager.py", line 466, in createIndex\n    self._writeIndex(OrderedDict([(\'.\', {})]))\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\util\\DataManager.py", line 859, in _writeIndex\n    writeConfigFile(newIndex, self._indexFile())\n', '  File "C:\\Users\\autopatch\\acq4\\pyqtgraph\\pyqtgraph\\configfile.py", line 42, in writeConfigFile\n    with open(fname, \'w\') as fd:\n']
+LogEntry_58:
+    message: 'No log directory set. Log messages will not be stored.'
+    timestamp: '2020.12.15 19:57:09'
+    importance: 8
+    msgType: 'warning'
+    id: 59
+    docs: ['userGuide/dataManagement.html#notes-and-logs']
+    currentDir: 'C:\\Users\\autopatch\\acq4\\acq4\\testdata'
+    exception: None
+LogEntry_59:
+    message: 'Created new folder: 2020.12.15_000'
+    timestamp: '2020.12.15 19:57:13'
+    importance: 7
+    msgType: 'status'
+    id: 60
+    currentDir: 'C:\\Users\\autopatch\\acq4\\acq4\\testdata'
+    exception: None
+LogEntry_60:
+    message: 'Moving log storage to 2020.12.15_000.'
+    timestamp: '2020.12.15 19:57:13'
+    importance: 5
+    msgType: 'status'
+    id: 61
+    currentDir: 'C:\\Users\\autopatch\\acq4\\acq4\\testdata\\2020.12.15_000'
+    exception: None
+LogEntry_61:
+    message: 'Moved log storage from tempLog.txt to C:\\Users\\autopatch\\acq4\\acq4\\testdata\\2020.12.15_000\\log.txt.'
+    timestamp: '2020.12.15 19:57:13'
+    importance: 5
+    msgType: 'status'
+    id: 62
+    currentDir: 'C:\\Users\\autopatch\\acq4\\acq4\\testdata\\2020.12.15_000'
+    exception: None
+LogEntry_62:
+    message: 'Unexpected error: '
+    timestamp: '2020.12.15 19:57:21'
+    importance: 5
+    msgType: 'error'
+    id: 63
+    currentDir: 'C:\\Users\\autopatch\\acq4\\acq4\\testdata\\2020.12.15_000'
+    exception:
+        message: 'Exception: No device named PatchPipette1. Options are DAQ,Clamp4,Clamp8,Stage,ObjectiveChanger,Microscope,GFP_FilterCube,FilterTurret,Camera,Sensapex1,Sensapex2,Sensapex3,Sensapex4,Sensapex5,Sensapex6,Sensapex7,Sensapex8,Pipette1,Pipette2,Pipette3,Pipette4,Pipette5,Pipette6,Pipette7,Pipette8,Pressure1,Pressure2,Pressure3,Pressure4,Pressure5,Pressure6,Pressure7,Pressure8,PatchPipette4,PatchPipette8'
+        traceback: ['Traceback (most recent call last):\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\Manager.py", line 475, in getDevice\n    return self.getInterface(\'device\', name)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\Manager.py", line 803, in getInterface\n    return self.interfaceDir.getInterface(*args, **kargs)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\Interfaces.py", line 138, in getInterface\n    return self.typeList[type][name]\n', '  File "C:\\Users\\autopatch\\.conda\\envs\\acq4\\lib\\weakref.py", line 137, in __getitem__\n    o = self.data[key]()\n', "KeyError: 'PatchPipette1'\n", '\nDuring handling of the above exception, another exception occurred:\n\n', 'Traceback (most recent call last):\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\Manager\\Manager.py", line 196, in loadSelectedModule\n    self.loadConfiguredModule(item.confModName)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\Manager\\Manager.py", line 203, in loadConfiguredModule\n    self.manager.loadDefinedModule(mod)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\Manager.py", line 594, in loadDefinedModule\n    mod = self.loadModule(mod, name, config, forceReload=forceReload, execPath=execPath, importMod=importMod)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\Manager.py", line 533, in loadModule\n    mod = modclass(self, name, config)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4-autopatch\\acq4_autopatch\\module.py", line 91, in __init__\n    pip = manager.getDevice(pipName)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\Manager.py", line 477, in getDevice\n    raise Exception("No device named %s. Options are %s" % (name, \',\'.join(self.listDevices())))\n']
+LogEntry_63:
+    message: "Error while requesting dock 'Clamp4' quit:"
+    timestamp: '2020.12.16 16:08:52'
+    importance: 5
+    msgType: 'error'
+    id: 64
+    traceback: ['  File "C:\\Users\\autopatch\\.conda\\envs\\acq4\\lib\\runpy.py", line 193, in _run_module_as_main\n    "__main__", mod_spec)\n', '  File "C:\\Users\\autopatch\\.conda\\envs\\acq4\\lib\\runpy.py", line 85, in _run_code\n    exec(code, run_globals)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\__main__.py", line 141, in <module>\n    app.exec_()\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\TaskRunner\\TaskRunner.py", line 52, in closeEvent\n    self.pr.quit()\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\TaskRunner\\TaskRunner.py", line 428, in quit\n    self.clearDocks()\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\TaskRunner\\TaskRunner.py", line 406, in clearDocks\n    printExc("Error while requesting dock \'%s\' quit:" % d)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\util\\debug.py", line 47, in printExc\n    acq4.Manager.logExc(msg=msg, msgType=msgType)\n', '------- exception caught ---------->\n']
+    currentDir: 'C:\\Users\\autopatch\\acq4\\acq4\\testdata\\2020.12.15_000'
+    exception:
+        message: "AttributeError: module 'acq4.util.Qt' has no attribute 'SIGNAL'"
+        traceback: ['  File "C:\\Users\\autopatch\\.conda\\envs\\acq4\\lib\\runpy.py", line 193, in _run_module_as_main\n    "__main__", mod_spec)\n', '  File "C:\\Users\\autopatch\\.conda\\envs\\acq4\\lib\\runpy.py", line 85, in _run_code\n    exec(code, run_globals)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\__main__.py", line 141, in <module>\n    app.exec_()\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\TaskRunner\\TaskRunner.py", line 52, in closeEvent\n    self.pr.quit()\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\TaskRunner\\TaskRunner.py", line 428, in quit\n    self.clearDocks()\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\TaskRunner\\TaskRunner.py", line 406, in clearDocks\n    printExc("Error while requesting dock \'%s\' quit:" % d)\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\util\\debug.py", line 47, in printExc\n    acq4.Manager.logExc(msg=msg, msgType=msgType)\n', '------- exception caught ---------->\n', 'Traceback (most recent call last):\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\modules\\TaskRunner\\TaskRunner.py", line 404, in clearDocks\n    self.docks[d].widget().quit()\n', '  File "C:\\Users\\autopatch\\acq4\\acq4\\acq4\\devices\\MultiClamp\\taskGUI.py", line 347, in quit\n    Qt.QObject.disconnect(self.daqUI, Qt.SIGNAL(\'changed\'), self.daqChanged)\n']
+LogEntry_64:
+    message: 'Shutting Down.'
+    timestamp: '2020.12.16 16:09:00'
+    importance: 9
+    msgType: 'status'
+    id: 65
+    currentDir: 'C:\\Users\\autopatch\\acq4\\acq4\\testdata\\2020.12.15_000'
+    exception: None
