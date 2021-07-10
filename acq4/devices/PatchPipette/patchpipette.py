@@ -10,6 +10,8 @@ from .devgui import PatchPipetteDeviceGui
 from .testpulse import TestPulseThread
 from .statemanager import PatchPipetteStateManager
 
+import pyqtgraph as pg
+
 
 class PatchPipette(Device):
     """Represents a single patch pipette, manipulator, and headstage.
@@ -87,6 +89,7 @@ class PatchPipette(Device):
         self.pipetteDevice.sigTargetChanged.connect(self._pipetteTargetChanged)
 
         deviceManager.declareInterface(name, ['patchpipette'], self)
+        self.char = None
 
         # restore last known state for this pipette
         lastState = self.readConfigFile('last_state')
@@ -96,6 +99,16 @@ class PatchPipette(Device):
         # self.calibrated = lastState.get('calibrated', False)
         # self.setActive(False)  # Always start pipettes disabled rather than restoring last state?
         # # self.setActive(lastState.get('active', False))
+
+    def testWindow(self):
+        self.char = None
+        self.char = pg.GraphicsLayoutWidget()
+        self.char.show()
+        self.char.raise_()
+
+
+        win = self.char
+        return win
 
     def isTipClean(self):
         return self.clean

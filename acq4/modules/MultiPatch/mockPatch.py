@@ -23,7 +23,7 @@ class MockPatch(object):
     def resetState(self):
         self.radius = 7e-6
         self.sealResistance = 0
-        self.maxSealResistance = 2e9
+        self.maxSealResistance = 1e9 #Ronny: Default 2e9
         self.pipResistance = 5e6
         self.accessResistance = 1e12
         self.capacitance = 2e-12

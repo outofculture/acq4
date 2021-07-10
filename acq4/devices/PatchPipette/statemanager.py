@@ -42,6 +42,8 @@ class PatchPipetteStateManager(Qt.QObject):
                 states.PatchPipetteBrokenState,
                 states.PatchPipetteFouledState,
                 states.PatchPipetteCleanState,
+                states.TestState,
+                states.CharacterizationState,
             ]
         ]
     )
