@@ -431,17 +431,15 @@ class PatchThread(Thread):
             lastTime = None
             while True:
                 ## copy in parameters from GUI
-                updateCommand = False
                 with self.lock:
                     if self.paramsUpdated:
                         with self.ui.paramLock:
                             params = self.ui.params.copy()
                             self.paramsUpdated = False
-                        updateCommand = True
-                
+
                 ## run protocol and analysis
                 try:
-                    self.runOnce(params, clamp, daqName, clampName)
+                    self.runOnce(params, clampName, daqName)
                 except:
                     printExc("Error running/analyzing patch protocol")
                 
@@ -469,11 +467,9 @@ class PatchThread(Thread):
             printExc("Error in patch acquisition thread, exiting.")
         #self.emit(Qt.SIGNAL('threadStopped'))
         
-    def runOnce(self, params, clamp, daqName, clampName):
+    def runOnce(self, params, clampName, daqName):
         prof = Profiler('PatchThread.run', disabled=True)
         #lastTime = time.clock()   ## moved to after the command run
-        
-        
         ## Regenerate command signal if parameters have changed
         numPts = int(float(params['recordTime']) * params['rate'])
         mode = params['mode']
@@ -491,19 +487,18 @@ class PatchThread(Thread):
         stop = start + int(params['pulseTime'] * params['rate'])
         cmdData[start:stop] = holding + amplitude
         #cmdData[-1] = holding
-        
+
         cmd = {
             'protocol': {'duration': params['recordTime'], 'leadTime': 0.02},
             daqName: {'rate': params['rate'], 'numPts': numPts, 'downsample': params['downsample']},
             clampName: {
                 'mode': params['mode'],
                 'command': cmdData,
-                'holding': holding
-            }
-            
+                'holding': holding,
+            },
         }
         prof.mark('build command')
-        
+
         ## Create and execute task.
         ## the try/except block is just to catch errors that come up during multiclamp auto pipette offset procedure.
         results = []

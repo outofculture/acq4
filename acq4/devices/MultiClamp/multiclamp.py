@@ -169,7 +169,7 @@ class MultiClamp(PatchClamp):
         with self.stateLock:
             if mode in self.lastState:
                 return self.lastState[mode]
-        
+
     def extCmdScale(self, mode):
         """Return our best guess as to the external command sensitivity for the given mode."""
         s = self.getLastState(mode)
@@ -372,7 +372,7 @@ class MultiClampTask(DeviceTask):
 
     def getConfigOrder(self):
         """return lists of devices that should be configured (before, after) this device"""
-        return ([], [self.dev.getDAQName("primary")])
+        return ([], [])
 
     def configure(self):
         """Sets the state of a remote multiclamp to prepare for a program run."""
@@ -385,7 +385,7 @@ class MultiClampTask(DeviceTask):
         ## set holding level
         if 'holding' in self.cmd and self.cmd['mode'] != 'I=0':
             self.dev.setHolding(self.cmd['mode'], self.cmd['holding'])
-        
+
         self.dev.setMode(self.cmd['mode'])
         if self.cmd['primary'] is not None:
             self.dev.setPrimarySignal(self.cmd['primary'])

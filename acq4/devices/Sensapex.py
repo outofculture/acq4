@@ -291,7 +291,7 @@ class SensapexInterface(Qt.QWidget):
         self.btnLayout.addWidget(self.setHomeBtn, 0, 1)
         self.setHomeBtn.clicked.connect(self.setHomeClicked)
 
-        self.calibrateBtn = Qt.QPushButton("Calibrate")
+        self.calibrateBtn = Qt.QPushButton("Calibrate Axes")
         self.btnLayout.addWidget(self.calibrateBtn, 0, 2)
         self.calibrateBtn.clicked.connect(self.calibrateClicked)
 

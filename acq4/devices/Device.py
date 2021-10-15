@@ -31,6 +31,7 @@ class Device(InterfaceMixin, Qt.QObject):  # QObject calls super, which is disas
         self.dm.declareInterface(name, ['device'], self)
         Device._deviceCreationOrder.append(weakref.ref(self))
         self._name = name
+        self.config = config
             
     def name(self):
         """Return the string name of this device.

@@ -4,7 +4,10 @@ from __future__ import print_function
 import weakref
 
 import numpy
-from pyqtgraph import SpinBox, WidgetGroup, mkPen
+
+from acq4.devices.Device import TaskGui
+from acq4.util.debug import printExc
+from pyqtgraph import SpinBox, WidgetGroup, mkPen, PlotWidget
 from six.moves import range
 
 from acq4.util import Qt
@@ -17,9 +20,182 @@ InputChannelTemplate = Qt.importTemplate('.InputChannelTemplate')
 
 ###### For task GUIs
 
+Ui_Form = Qt.importTemplate('.TaskTemplate')
+
+
+class DaqMultiChannelTaskGuis(Qt.QObject):
+    """
+    Encapsulates standard user interfaces and logic around handling analog input/output signals in TaskRunner.
+
+    - Input channels have a control panel with "record" and "display" check boxes
+    - Input channels have a plot widget that displays incoming data, potentially overlapping plots if they came
+      from the same sequence
+    - Output channels have a function generator and plot widget
+    - Output plots include the single and sequence commands, the most recently executed command
+    - Includes logic for saving/restoring ui state, generating task commands
+
+    Usage::
+
+         guis = DaqMultiChannelTaskGuis()
+         for chan in channels:
+             ctrlwidget, plotwidget = guis.createChannelWidget(chan.name, chan.chanType, chan.units)
+             # put the widgets in your gui
+
+         - OR -
+
+         guis = DaqMultiChannelTaskGuis()
+         for chan in channels:
+             guis.createChannelWidget(chan.name, chan.chanType, chan.units)
+         widget = guis.asWidget()  # embed all created widgets in splitters and return top-level splitter
+         # put a default widget in your UI; includes splitters
+    """
+
+    sigSequenceChanged = Qt.Signal(object)
+
+    def __init__(self, dev, taskRunner, ownUi=True):
+        super().__init__()
+        self.dev = dev
+        self.taskRunner = taskRunner
+        self._widgetsByChannel = {}
+        self._plotsByChannel = {}
+        self.stateGroup = WidgetGroup([])
+
+        if ownUi:
+            self.topSplitter = Qt.QSplitter(Qt.Qt.Horizontal)
+            self.controlSplitter = Qt.QSplitter(Qt.Qt.Vertical)
+            self.plotSplitter = Qt.QSplitter(Qt.Qt.Vertical)
+            self.topSplitter.addWidget(self.controlSplitter)
+            self.topSplitter.addWidget(self.plotSplitter)
+            self.stateGroup = WidgetGroup([
+                (self.topSplitter, 'splitter1'),
+                (self.controlSplitter, 'splitter2'),
+                (self.plotSplitter, 'splitter3'),
+            ])
+            self.topSplitter.setStretchFactor(0, 0)
+            self.topSplitter.setStretchFactor(1, 1)
+
+        else:
+            ## If ownUi is False, then the UI is created elsewhere and createChannelWidgets must be called from there too.
+            self.stateGroup = None
+
+    def asWidget(self):
+        return self.topSplitter
+
+    def createChannelWidget(self, name, chanType, units, dev, taskRunner, daqName=None):
+        if chanType in ['ao', 'do']:
+            w = OutputChannelGui(self, name, chanType, units, dev, taskRunner, daqName)
+            w.sigSequenceChanged.connect(self.sequenceChanged)
+        elif chanType in ['ai', 'di']:
+            w = InputChannelGui(self, name, chanType, units, dev, taskRunner, daqName)
+        else:
+            raise Exception("Unrecognized device type '%s'" % chanType)
+        self._widgetsByChannel[name] = w
+        self._plotsByChannel[name] = w.plot
+
+        return w, w.plot
+
+    def saveState(self):
+        if self.stateGroup is not None:
+            state = self.stateGroup.state().copy()
+        else:
+            state = {}
+        state['channels'] = {}
+        for ch in self._widgetsByChannel:
+            state['channels'][ch] = self._widgetsByChannel[ch].saveState()
+        return state
+
+    def restoreState(self, state):
+        try:
+            if self.stateGroup is not None:
+                self.stateGroup.setState(state)
+            for ch in state['channels']:
+                try:
+                    self._widgetsByChannel[ch].restoreState(state['channels'][ch])
+                except KeyError:
+                    printExc(
+                        "Warning: Cannot restore state for channel %s.%s (channel does not exist on this device)" % (
+                        self.dev.name(), ch))
+                    continue
+        except:
+            printExc('Error while restoring GUI state:')
+
+    def listSequence(self):
+        ## returns sequence parameter names and lengths
+        l = {}
+        for ch in self._widgetsByChannel:
+            chl = self._widgetsByChannel[ch].listSequence()
+            for k in chl:
+                l[ch + '.' + k] = chl[k]
+        return l
+
+    def sequenceChanged(self):
+        self.sigSequenceChanged.emit(self.dev.name())
+
+    def taskStarted(self, params):  ## automatically invoked from TaskGui
+        ## Pull out parameters for this device
+        params = dict([(p[1], params[p]) for p in params if p[0] == self.dev.name()])
+
+        for ch in self._widgetsByChannel:
+            search = ch + '.'
+            ## Extract just the parameters the channel will need
+            chParams = {
+                k[len(search) :]: params[k]
+                for k in params
+                if k[: len(search)] == search
+            }
+
+            self._widgetsByChannel[ch].taskStarted(chParams)
+
+    def taskSequenceStarted(self):  ## automatically invoked from TaskGui
+        for ch in self._widgetsByChannel:
+            self._widgetsByChannel[ch].taskSequenceStarted()
+
+    def generateTask(self, params=None):
+        if params is None:
+            params = {}
+        p = {}
+        for ch in self._widgetsByChannel:
+            search = ch + '.'
+            ## Extract just the parameters the channel will need
+            chParams = {
+                k[len(search) :]: params[k]
+                for k in params
+                if k[: len(search)] == search
+            }
+
+            ## request the task from the channel
+            p[ch] = self._widgetsByChannel[ch].generateTask(chParams)
+        return p
+
+    def handleResult(self, result, params):
+        if result is None:
+            return
+        for ch in self._widgetsByChannel:
+            if result.hasColumn(0, ch):
+                self._widgetsByChannel[ch].handleResult(result[ch], params)
+
+    def getChanHolding(self, chan):
+        """Return the holding value that this channel will use when the task is run."""
+        return self.dev.getChanHolding(chan)
+
+    def quit(self):
+        TaskGui.quit(self)
+        for ch in self._widgetsByChannel:
+            self._widgetsByChannel[ch].quit()
+
+
 class DaqChannelGui(Qt.QWidget):
-    def __init__(self, parent, name, config, plot, dev, taskRunner, daqName=None):
+    def __init__(self, name, chanType, units, dev, taskRunner, daqName, parent=None, plot=None):
+        # self, name, units, dev, taskRunner, daqName
         Qt.QWidget.__init__(self, parent)
+        self.chanType = chanType
+
+        if plot is not None:
+            plot = PlotWidget(self, parent=parent)
+            plot.setLabel('left', text=name, units=units)
+            plot.registerPlot(self.dev.name() + '.' + name)
+        self.plot = plot
+
 
         ## Name of this channel
         self.name = name
@@ -27,11 +203,8 @@ class DaqChannelGui(Qt.QWidget):
         ## Parent taskGui object
         self.taskGui = weakref.ref(parent)
 
-        ## Configuration for this channel defined in the device configuration file
-        self.config = config
-
         self.scale = 1.0
-        self.units = ''
+        self.units = units
 
         ## The device handle for this channel's DAQGeneric device
         self.dev = dev
@@ -118,9 +291,13 @@ class OutputChannelGui(DaqChannelGui):
     sigSequenceChanged = Qt.Signal(object)
     sigDataChanged = Qt.Signal(object)
 
-    def __init__(self, *args):
+    def __init__(self, parent, name, chanType, units, dev, taskRunner, daqName):
         self._block_update = False  # blocks plotting during state changes
-        DaqChannelGui.__init__(self, *args)
+        DaqChannelGui.__init__(self, parent, name, chanType, units, dev, taskRunner, daqName)
+
+        self.plot.setLabel('left', text=name, units=units)
+        self.plot.registerPlot(self.dev.name() + '.' + name)
+
         self.units = ''
         self.currentPlot = None
         if self.config['type'] == 'ao':
@@ -178,10 +355,9 @@ class OutputChannelGui(DaqChannelGui):
     def functionCheckToggled(self, checked):
         if checked:
             self.ui.waveGeneratorWidget.setEnabled(True)
-            self.updateWaves()
         else:
             self.ui.waveGeneratorWidget.setEnabled(False)
-            self.updateWaves()
+        self.updateWaves()
 
     def daqChanged(self, state):
         self.rate = state['rate']
@@ -221,11 +397,9 @@ class OutputChannelGui(DaqChannelGui):
 
         self.clearPlots()
 
-        ## display sequence waves
-        params = {}
         ps = self.ui.waveGeneratorWidget.listSequences()
-        for k in ps:
-            params[k] = list(range(len(ps[k])))
+        ## display sequence waves
+        params = {k: list(range(len(ps[k]))) for k in ps}
         waves = []
         runSequence(lambda p: waves.append(self.getSingleWave(p)), params,
                     list(params.keys()))  ## appends waveforms for the entire parameter space to waves
@@ -261,8 +435,7 @@ class OutputChannelGui(DaqChannelGui):
             self.currentPlot.setZValue(100)
 
     def plotCurve(self, data, color=Qt.QColor(100, 100, 100), replot=True):
-        plot = self.plot.plot(y=data, x=self.timeVals, pen=mkPen(color))
-        return plot
+        return self.plot.plot(y=data, x=self.timeVals, pen=mkPen(color))
 
     def getSingleWave(self, params=None):
         state = self.stateGroup.state()
@@ -270,9 +443,7 @@ class OutputChannelGui(DaqChannelGui):
         if h is not None:
             self.ui.waveGeneratorWidget.setOffset(h)
 
-        wave = self.ui.waveGeneratorWidget.getSingle(self.rate, self.numPts, params)
-
-        return wave
+        return self.ui.waveGeneratorWidget.getSingle(self.rate, self.numPts, params)
 
     def holdingCheckChanged(self, *v):
         self.ui.holdingSpin.setEnabled(self.ui.holdingCheck.isChecked())
@@ -316,8 +487,8 @@ class OutputChannelGui(DaqChannelGui):
 
 
 class InputChannelGui(DaqChannelGui):
-    def __init__(self, *args):
-        DaqChannelGui.__init__(self, *args)
+    def __init__(self, parent, name, chanType, units, dev, taskRunner, daqName):
+        DaqChannelGui.__init__(self, parent, name, chanType, units, dev, taskRunner, daqName)
         self.ui = InputChannelTemplate()
         self.ui.setupUi(self)
         self.postUiInit()
