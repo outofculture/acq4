@@ -251,6 +251,10 @@ class DAQGeneric(Device):
             ## - can be overridden in configuration
             return self._DGConfig[chan].get('offset', 0.0)
 
+    def getChanType(self, ch):
+        with self._DGLock:
+            return self._DGConfig[ch]['type']
+
     def getChanUnits(self, ch):
         with self._DGLock:
             if 'units' in self._DGConfig[ch]:
