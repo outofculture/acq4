@@ -1,4 +1,4 @@
-from acq4.devices.DAQGeneric.DaqChannelGui import DaqMultiChannelTaskGuis
+from acq4.util.DaqChannelGui import DaqMultiChannelTaskGuis
 from pyqtgraph.Qt import mkQApp
 from acq4.util import Qt
 from pyqtgraph.parametertree import ParameterTree, Parameter

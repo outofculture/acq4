@@ -4,7 +4,7 @@ from __future__ import print_function
 import weakref
 
 from acq4.devices.DAQGeneric import DAQGeneric
-from acq4.devices.DAQGeneric.DaqChannelGui import DaqMultiChannelTaskGuis
+from acq4.util.DaqChannelGui import DaqMultiChannelTaskGuis
 from acq4.devices.Device import TaskGui
 from acq4.util import Qt
 
