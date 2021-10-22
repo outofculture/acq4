@@ -2,7 +2,6 @@
 from __future__ import print_function
 
 import weakref
-
 from acq4.devices.DAQGeneric import DAQGeneric
 from acq4.util.DaqChannelGui import DaqMultiChannelTaskGuis
 from acq4.devices.Device import TaskGui
@@ -11,9 +10,10 @@ from pyqtgraph.WidgetGroup import WidgetGroup
 
 
 class DAQGenericTaskGui(TaskGui):
-    def __init__(self, dev: DAQGeneric, task, ownUi=True):
-        TaskGui.__init__(self, dev, task)
+    def __init__(self, dev: DAQGeneric, taskRunner, ownUi=True):
+        TaskGui.__init__(self, dev, taskRunner)
         self.uiMaker = DaqMultiChannelTaskGuis(dev.name())
+        self.taskRunner = weakref.ref(taskRunner)
         if ownUi:
             self.layout = Qt.QGridLayout()
             self.setLayout(self.layout)
@@ -33,8 +33,8 @@ class DAQGenericTaskGui(TaskGui):
         self.daqUI = self.taskRunner().getDevice(self.daqDev)
 
         # update whenever the daq state has changed (sample rate, n samples)
-        self.daqChanged(self.daqUI.currentState())
-        self.daqUI.sigChanged.connect(self.daqChanged)
+        self.daqStateChanged(self.daqUI.currentState())
+        self.daqUI.sigChanged.connect(self.daqStateChanged)
 
         # update when holding value has changed on device
         self.dev.sigHoldingChanged.connect(self.updateHolding)
@@ -51,23 +51,15 @@ class DAQGenericTaskGui(TaskGui):
         chanType = self.dev.getChanType(ch)
         return self.uiMaker.createChannelWidget(ch, chanType, units)
 
-    def daqChanged(self, state):
-        pass
+    def daqStateChanged(self, state):
+        # Called when DAQ parameters have changed.
+        # state is a dict containing at least 'rate' and 'numPts'
+        self.uiMaker.daqStateChanged(state)
 
-    def updateHolding(self):
-        hv = self.getHoldingValue()
-        if hv is not None:
-            if not self.ui.holdingCheck.isChecked():
-                self.ui.holdingSpin.setValue(hv)
-            self.ui.waveGeneratorWidget.setOffset(hv)
-
-    def getHoldingValue(self):
-        """Return the value for this channel that will be used when the task is run
-        (by default, this is just the current holding value)"""
-        if self.ui.holdingCheck.isChecked():
-            return self.ui.holdingSpin.value()
-        else:
-            return self.taskGui().getChanHolding(self.name)
+    def updateHolding(self, channel, value):
+        # device changed its holding value; let the ui know so it can make any necessary updates
+        ctrlWidget = self.uiMaker.getWidgets(channel)[0]
+        ctrlWidget.deviceHoldingValueChanged(value)
 
     def saveState(self):
         if self.stateGroup is not None:
@@ -95,9 +87,9 @@ class DAQGenericTaskGui(TaskGui):
 """
 TODO:
 
+- how to get holding value from device:
 
 
-- call updateHolding when needed
 
 
 """

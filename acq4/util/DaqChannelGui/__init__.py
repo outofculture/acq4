@@ -96,6 +96,9 @@ class DaqMultiChannelTaskGuis(Qt.QObject):
             self.plotSplitter.addWidget(w.plot)
         return w, w.plot
 
+    def getWidgets(self, channel):
+        return self._widgetsByChannel[channel], self._plotsByChannel[channel]
+
     def addControlWidget(self, widget):
         self._extraControlWidgets.append(widget)
         if self.topSplitter is not None:

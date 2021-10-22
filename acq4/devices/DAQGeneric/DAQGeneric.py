@@ -83,7 +83,7 @@ class DAQGeneric(Device):
                 invert: True
         
     """
-    sigHoldingChanged = Qt.Signal(object, object)
+    sigHoldingChanged = Qt.Signal(object, object)  # channel, value
 
     def __init__(self, dm, config, name):
         Device.__init__(self, dm, config, name)
