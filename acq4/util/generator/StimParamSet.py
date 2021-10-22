@@ -5,6 +5,7 @@ from pyqtgraph.parametertree.parameterTypes import SimpleParameter, GroupParamet
 import pyqtgraph as pg
 import collections
 
+
 class StimParamSet(GroupParameter):
     ## top-level parameter in the simple stim generator tree
     def __init__(self):

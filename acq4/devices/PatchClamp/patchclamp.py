@@ -71,12 +71,6 @@ class PatchClamp(Device):
         """
         raise NotImplementedError()
 
-    def getDaqGenericDevice(self):
-        """
-        Returns the DAQGeneric device that can be used to access this clamp's signal and trigger channels.
-        """
-        raise NotImplementedError()
-
     def setMode(self, mode):
         """Set the currently active clamp mode ('IC', 'VC', etc.)
         """
@@ -142,8 +136,7 @@ class ClampTaskGui(TaskGui):
 
     def saveState(self):
         """Return a dictionary representing the current state of the widget."""
-        state = {}
-        state['daqState'] = DAQGenericTaskGui.saveState(self)
+        state = {'daqState': DAQGenericTaskGui.saveState(self)}
         state['mode'] = self.getMode()
         # state['holdingEnabled'] = self.ctrl.holdingCheck.isChecked()
         # state['holding'] = self.ctrl.holdingSpin.value()
@@ -166,12 +159,10 @@ class ClampTaskGui(TaskGui):
     def generateTask(self, params=None):
         daqTask = DAQGenericTaskGui.generateTask(self, params)
 
-        task = {
+        return {
             'mode': self.getMode(),
             'daqProtocol': daqTask
         }
-
-        return task
 
     def modeChanged(self):
         global ivModes

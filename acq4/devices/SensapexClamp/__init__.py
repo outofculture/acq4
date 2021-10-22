@@ -1,37 +1,18 @@
-from acq4.devices.BaseDAQ import BaseDAQ
-from acq4.devices.DAQGeneric import DAQGenericTaskGui, DAQGeneric
+from acq4.devices.Device import DeviceTask
 from acq4.devices.PatchClamp import PatchClamp
-from acq4.util import Qt
+from acq4.devices.SensapexClamp.guis import SensapexClampTaskGui, SensapexClampDeviceGui
 from sensapex.uma import UMA
 
 
-class QuacksLikeADAQ(BaseDAQ):
-    def __init__(self, deviceManager, config, name):
-        super(QuacksLikeADAQ, self).__init__(deviceManager, config, name)
-        self._clamp = config["_clamp_device"]
-
-    def createTask(self, cmd, parent_task):
-        pass  # TODO
-
-
-class QuacksLikeADAQGeneric(DAQGeneric):
-    def __init__(self, deviceManager, config, name):
-        super(QuacksLikeADAQGeneric, self).__init__(deviceManager, config, name)
-        self._clamp = config["_clamp_device"]
+__all__ = ["SensapexClamp"]
 
 
 class SensapexClamp(PatchClamp):
     def __init__(self, deviceManager, config: dict, name):
         super(SensapexClamp, self).__init__(deviceManager, config, name)
         config.setdefault("_clamp_device", self)
-        self._daq_dev = deviceManager.loadDevice("SensapexClamp.QuacksLikeADAQ", config, f'{name}Daq')
-        self._daq_generic_device = deviceManager.loadDevice(
-            "SensapexClamp.QuacksLikeADAQGeneric", config, f'{name}DaqGeneric')
         self._manipulator = deviceManager.getDevice(config["Manipulator"])
         self._dev = UMA(self._manipulator.dev)
-
-    def getDaqGenericDevice(self):
-        return self._daq_generic_device
 
     def getParam(self, param):
         # TODO name mapping?
@@ -42,8 +23,11 @@ class SensapexClamp(PatchClamp):
         # uses self.mc.setParam in all its code.
         pass
 
+    def getSampleRate(self):
+        return self._dev.get_param("sample_rate")
+
     def createTask(self, cmd, mgr_task):
-        pass  # TODO
+        return SensapexClampTask(self, cmd, mgr_task)  # ?
 
     def getHolding(self, mode=None):
         if mode is None:
@@ -77,7 +61,8 @@ class SensapexClamp(PatchClamp):
         self._dev.set_clamp_mode(mode)
 
     def getDAQName(self, channel):
-        return self.name
+        return None
+        # TODO fix test pulse, cell-detect state, patch module, multipatch module
 
     def getState(self):
         return self._dev.get_params()
@@ -85,9 +70,29 @@ class SensapexClamp(PatchClamp):
     def deviceInterface(self, win):
         return SensapexClampDeviceGui(self, win)
 
+    def taskInterface(self, taskRunner):
+        return SensapexClampTaskGui(self, taskRunner)
 
-class SensapexClampDeviceGui(Qt.QWidget):
-    def __init__(self, dev, window):
-        super(SensapexClampDeviceGui, self).__init__()
-        self._dev = dev
-        # TODO
+
+class SensapexClampTask(DeviceTask):
+    def __init__(self, dev: SensapexClamp, cmd, parentTask):
+        super().__init__(dev, cmd, parentTask)
+        self.dev = dev
+        self._cmd = cmd
+
+    def start(self):
+        self.dev.dev.start_receiving()
+
+    def isDone(self):
+        # figure out if the data has all been received
+        pass
+
+    def configure(self):
+        self.dev.dev.stop_receiving()
+        self.dev.dev.send_stimulus_scaled()
+        # stop device
+        # set mode, params
+        # setup data receive hook
+
+    def getResult(self):
+        pass

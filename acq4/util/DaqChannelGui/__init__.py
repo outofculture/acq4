@@ -49,6 +49,7 @@ class DaqMultiChannelTaskGuis(Qt.QObject):
         self.deviceName = deviceName
         self._widgetsByChannel = {}
         self._plotsByChannel = {}
+        self._extraControlWidgets = []
         self.stateGroup = WidgetGroup([])
         self.topSplitter = None
 
@@ -65,6 +66,8 @@ class DaqMultiChannelTaskGuis(Qt.QObject):
             self.topSplitter.setStretchFactor(0, 0)
             self.topSplitter.setStretchFactor(1, 1)
 
+            for widget in self._extraControlWidgets:
+                self.controlSplitter.addWidget(widget)
             for widget in self._widgetsByChannel.values():
                 self.controlSplitter.addWidget(widget)
             for widget in self._plotsByChannel.values():
@@ -73,6 +76,8 @@ class DaqMultiChannelTaskGuis(Qt.QObject):
         return self.topSplitter
 
     def createChannelWidget(self, channelName, chanType, units, parent=None):
+        if channelName in self._widgetsByChannel:
+            raise ValueError(f"channel widget for {channelName} already exists")
         if chanType in ["ao", "do"]:
             w = OutputChannelGui(
                 groupName=self.deviceName, channelName=channelName, units=units, channelType=chanType, parent=parent
@@ -90,6 +95,11 @@ class DaqMultiChannelTaskGuis(Qt.QObject):
             self.controlSplitter.addWidget(w)
             self.plotSplitter.addWidget(w.plot)
         return w, w.plot
+
+    def addControlWidget(self, widget):
+        self._extraControlWidgets.append(widget)
+        if self.topSplitter is not None:
+            self.controlSplitter.addWidget(widget)
 
     def daqStateChanged(self, state):
         for widget in self._widgetsByChannel.values():
@@ -210,6 +220,7 @@ class DaqChannelGui(Qt.QWidget):
 
     def setUnits(self, units):
         self.units = units
+        self.plot.setLabel("left", text=self.channelName, units=self.units)
         for s in self.getSpins():
             if isinstance(s, SpinBox):
                 s.setOpts(suffix=units)
@@ -267,7 +278,6 @@ class OutputChannelGui(DaqChannelGui):
         self.plot.setLabel("left", text=channelName, units=self.units)
         self.plot.registerPlot(groupName + "." + channelName)
 
-        self.units = ""  # TODO ?
         self.currentPlot = None
         if self.channelType == "ao":
             self.ui = AOChannelTemplate()
@@ -299,9 +309,16 @@ class OutputChannelGui(DaqChannelGui):
         # key is 'x' (time), 'y' (amp), or 'xy' (sum)
         self.ui.waveGeneratorWidget.setMeta(key, **kwargs)
 
-    def setUnits(self, units, **kwargs):
+    def setUnits(self, units):
         DaqChannelGui.setUnits(self, units)
-        self.ui.waveGeneratorWidget.setMeta("y", units=units, siPrefix=True, **kwargs)
+        minStep = 1e-3 if units == "V" else 1e-12
+        spinOpts = dict(siPrefix=True, dec=True, step=0.5, minStep=minStep)
+        self.ui.waveGeneratorWidget.setMeta("y", units=units, **spinOpts)
+        self.ui.holdingSpin.setOpts(suffix=units, **spinOpts)
+
+        xyUnits = "V*s" if units == "V" else "C"
+        xyMinStep = 1e-6 if units == "V" else 1e-15
+        self.ui.waveGeneratorWidget.setMeta("xy", units=xyUnits, siPrefix=True, dec=True, step=0.5, minStep=xyMinStep)
 
     def quit(self):
         DaqChannelGui.quit(self)
