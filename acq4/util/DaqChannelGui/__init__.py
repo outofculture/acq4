@@ -120,8 +120,6 @@ class DaqMultiChannelTaskGuis(Qt.QObject):
 
     def restoreState(self, state):
         try:
-            if self.stateGroup is not None:
-                self.stateGroup.setState(state)
             for ch in state["channels"]:
                 try:
                     self._widgetsByChannel[ch].restoreState(state["channels"][ch])
@@ -130,6 +128,8 @@ class DaqMultiChannelTaskGuis(Qt.QObject):
                         f"Warning: Cannot restore state for channel {self.deviceName}.{ch} (channel does not exist on this device)"
                     )
                     continue
+            if self.stateGroup is not None:
+                self.stateGroup.setState(state)
         except:
             printExc("Error while restoring GUI state:")
 
@@ -189,7 +189,7 @@ class DaqMultiChannelTaskGuis(Qt.QObject):
 class DaqChannelGui(Qt.QWidget):
     def __init__(self, groupName, channelName, units, channelType, parent=None):
         Qt.QWidget.__init__(self, parent)
-        self.units = units
+        self.units = units or ''
         self.channelName = channelName
         self.channelType = channelType
         self.deviceHoldingValue = None
