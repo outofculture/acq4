@@ -34,6 +34,8 @@ class DAQGenericTaskGui(TaskGui):
         # update when holding value has changed on device
         self.dev.sigHoldingChanged.connect(self.updateHolding)
 
+        self.uiMaker.sigSequenceChanged.connect(self.sigSequenceChanged)
+
     def createChannelWidgets(self, ctrlParent, plotParent):
         ## Create plots and control widgets
         for ch in self.dev._DGConfig:
@@ -61,3 +63,19 @@ class DAQGenericTaskGui(TaskGui):
 
     def restoreState(self, state):
         return self.uiMaker.restoreState(state)
+
+    def handleResult(self, result, params):
+        return self.uiMaker.handleResult(result, params)
+
+    def listSequence(self):
+        return self.uiMaker.listSequence()
+
+    def generateTask(self, params=None):
+        return self.uiMaker.generateTask(params)
+
+    def taskSequenceStarted(self):
+        return self.uiMaker.taskSequenceStarted()
+
+    def taskStarted(self, params):
+        return self.uiMaker.taskStarted(params)
+

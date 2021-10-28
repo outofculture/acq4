@@ -849,7 +849,7 @@ class TaskRunner(Module):
         conf = self.protoStateGroup.state()
 
         ## store window state
-        ws = bytes(self.win.saveState().toPercentEncoding()).decode()
+        ws = self.win.saveState().toPercentEncoding().data().decode()
 
         ## store parameter order/state
         params = self.ui.sequenceParamList.saveState()
