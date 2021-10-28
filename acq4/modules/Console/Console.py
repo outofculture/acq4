@@ -66,7 +66,7 @@ class Console(Module):
         print("console quit", self.stateFile)
         ## save ui configuration
         geom = self.win.geometry()
-        state = {'window': bytes(self.win.saveState().toPercentEncoding()).decode(), 'geometry': [geom.x(), geom.y(), geom.width(), geom.height()]}
+        state = {'window': self.win.saveState().toPercentEncoding().data().decode(), 'geometry': [geom.x(), geom.y(), geom.width(), geom.height()]}
         self.manager.writeConfigFile(state, self.stateFile)
         Module.quit(self)
 

@@ -230,7 +230,7 @@ class Manager(Module):
         # save ui configuration
         geom = self.win.geometry()
         state = {
-            "window": bytes(self.win.saveState().toPercentEncoding()).decode(),
+            "window": self.win.saveState().toPercentEncoding().data().decode(),
             "geometry": [geom.x(), geom.y(), geom.width(), geom.height()],
         }
         self.manager.writeConfigFile(state, self.stateFile)

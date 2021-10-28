@@ -245,7 +245,7 @@ class CameraWindow(Qt.QMainWindow):
     def quit(self):
         geom = self.geometry()
         uiState = {
-            "window": bytes(self.saveState().toPercentEncoding()).decode(),
+            "window": self.saveState().toPercentEncoding().data().decode(),
             "geometry": [geom.x(), geom.y(), geom.width(), geom.height()],
             "docks": self.cw.saveState(),
         }
