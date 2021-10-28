@@ -1031,22 +1031,19 @@ class TaskThread(Thread):
             gc.collect()
 
         prof = Profiler("TaskRunner.TaskThread.runOnce", disabled=True, delayed=False)
-        startTime = ptime.time()
         if params is None:
             params = {}
 
-        ## Select correct command to execute
+        # Select correct command to execute
         cmd = self.task
-        if params is not None:
-            for p in params:
-                cmd = cmd[p: params[p]]
+        for p in params:
+            cmd = cmd[p: params[p]]
         prof.mark('select command')
 
-        ## Wait before starting if we've already run too recently
+        # Wait before starting if we've already run too recently
         while (self.lastRunTime is not None) and (ptime.time() < self.lastRunTime + cmd['protocol']['cycleTime']):
             with self.lock:
                 if self.abortThread or self.stopThread:
-                    # print "Task run aborted by user"
                     return
             time.sleep(1e-3)
         prof.mark('sleep')

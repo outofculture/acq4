@@ -11,10 +11,11 @@ class SensapexClampTaskGui(TaskGui):
     def __init__(self, dev, taskRunner):
         super(SensapexClampTaskGui, self).__init__(dev, taskRunner)
         self._numPts = None
-        uiMaker = DaqMultiChannelTaskGuis(dev.name())
+        self._uiMaker = DaqMultiChannelTaskGuis(dev.name())
+        self.sigSequenceChanged.connect(self._uiMaker.sigSequenceChanged)
         self._layout = Qt.QGridLayout()
         self.setLayout(self._layout)
-        self._layout.addWidget(uiMaker.asWidget(), 0, 0)
+        self._layout.addWidget(self._uiMaker.asWidget(), 0, 0)
         self.controls = Qt.QWidget()
         self.controlsUi = extraTaskControlsTemplate()
         self.controlsUi.setupUi(self.controls)
@@ -24,12 +25,41 @@ class SensapexClampTaskGui(TaskGui):
         self.controlsUi.clampModeCombo.currentIndexChanged.connect(self.clampModeChanged)
         self.taskRunner.sigTaskChanged.connect(self.taskRunnerChanged)
         # calculated attrs
-        uiMaker.addControlWidget(self.controls)
-        self._outputWidget, _ = uiMaker.createChannelWidget("command", "ao", "V")
-        self._inputWidget, _ = uiMaker.createChannelWidget("primary", "ai", "A")
+        self._uiMaker.addControlWidget(self.controls)
+        self._outputWidget, _ = self._uiMaker.createChannelWidget("command", "ao", "V")
+        self._inputWidget, _ = self._uiMaker.createChannelWidget("primary", "ai", "A")
 
         self.updateDaqParameters()
         self.clampModeChanged()
+
+    def listSequence(self):
+        return self._uiMaker.listSequence()
+
+    def taskSequenceStarted(self):
+        return self._uiMaker.taskSequenceStarted()
+
+    def taskStarted(self, params):
+        return self._uiMaker.taskStarted(params)
+
+    def quit(self):
+        return self._uiMaker.quit()
+
+    def saveState(self):
+        return self._uiMaker.saveState()
+
+    def restoreState(self, state):
+        return self._uiMaker.restoreState(state)
+
+    def generateTask(self, params=None):
+        self.updateDaqParameters()
+        outputTask = self._outputWidget.generateTask()
+        return {
+            "command": outputTask.get("command"),
+            "sampleRate": self.getSampleRate(),
+            "mode": self.controlsUi.clampModeCombo.currentText(),
+            "holding": outputTask.get("holding"),
+            "numPts": self._numPts,
+        }
 
     def taskRunnerChanged(self, n, v):
         if n == "duration":
@@ -44,13 +74,19 @@ class SensapexClampTaskGui(TaskGui):
             self._inputWidget.setUnits("A")
 
     def updateDaqParameters(self):
-        rate = self.controlsUi.sampleRateCombo.value()
+        rate = self.getSampleRate()
         taskDuration = self.taskRunner.getParam("duration")
         self._numPts = int(taskDuration * rate)
         self.controlsUi.samplePeriodLabel.setText(siFormat(1.0 / rate, suffix="s"))  #
         self.controlsUi.numPointsLabel.setText(str(self._numPts))
         self._outputWidget.daqStateChanged({"rate": rate, "numPts": self._numPts})
         self._inputWidget.daqStateChanged({"rate": rate, "numPts": self._numPts})
+
+    def handleResult(self, result, params):
+        return self._uiMaker.handleResult(result, params)
+
+    def getSampleRate(self):
+        return self.controlsUi.sampleRateCombo.value()
 
     def whatInterfaceDoesThisObjectNeed(self):
         self.fail()  # TODO createTask?

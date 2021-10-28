@@ -1,3 +1,5 @@
+import numpy as np
+
 from acq4.devices.Device import DeviceTask
 from acq4.devices.PatchClamp import PatchClamp
 from acq4.devices.SensapexClamp.guis import SensapexClampTaskGui, SensapexClampDeviceGui
@@ -6,10 +8,7 @@ from pyqtgraph import MetaArray
 from pyqtgraph.metaarray import axis
 from sensapex.uma import UMA
 
-import numpy as np
-
-
-__all__ = ["SensapexClamp"]
+__all__ = ["SensapexClamp", "SensapexClampTask"]
 
 
 class SensapexClamp(PatchClamp):
@@ -80,63 +79,99 @@ class SensapexClamp(PatchClamp):
 
 
 class SensapexClampTask(DeviceTask):
-    def __init__(self, dev: SensapexClamp, cmd, parentTask):
+    def __init__(self, dev: SensapexClamp, cmd: dict, parentTask):
+        required_keys = {"numPts", "mode", "sampleRate"}
+        if not required_keys.issubset(cmd.keys()):
+            raise ValueError(f"Task specification missing {required_keys - cmd.keys()}")
         super().__init__(dev, cmd, parentTask)
         self.dev = dev
+        self._umaDev = dev._dev
         self._cmd = cmd
+        self._numPoints = cmd["numPts"]
         self._startTime = None
         self.state = None
+        self._internalStartTime = None
+        self._timestampBufferIndex = 0
+        self._primaryBufferIndex = 0
+        self._secondaryBufferIndex = 0
+        self._timestampDataBuffer = None
+        self._primaryDataBuffer = None
+        self._secondaryDataBuffer = None
 
     def start(self):
         self._startTime = ptime.time()
-        self.dev._dev.start_receiving()
+        self._umaDev.start_receiving()
 
     def isDone(self):
-        # TODO figure out if the data has all been received and stimulus has all been sent
-        pass
+        return self._timestampBufferIndex >= self._numPoints
 
     def configure(self):
-        self.dev._dev.stop_receiving()
-        self.dev._dev.send_stimulus_scaled(self._cmd["command"])
-        self.dev._dev.add_receive_data_handler_scaled(
-            self._receivePrimaryData,
-            column="current" if self._cmd["mode"] == "VC" else "voltage",
+        self._umaDev.stop_receiving()
+        if self._cmd.get("command", None) is not None:
+            self._umaDev.send_stimulus_scaled(self._cmd["command"])
+        self._timestampBufferIndex = 0
+        self._primaryBufferIndex = 0
+        self._secondaryBufferIndex = 0
+        # TODO honor save-data checkbox
+        self._timestampDataBuffer = np.zeros(shape=(self._numPoints,), dtype=float)
+        self._primaryDataBuffer = np.zeros(shape=(self._numPoints,), dtype=float)
+        self._secondaryDataBuffer = np.zeros(shape=(self._numPoints,), dtype=float)
+        self._umaDev.add_receive_data_handler_scaled(self._receiveTimestamps, column="ts")
+        self._umaDev.add_receive_data_handler_scaled(
+            self._receivePrimaryData, column="current" if self._cmd["mode"] == "VC" else "voltage"
         )
-        self.dev._dev.add_receive_data_handler_scaled(
-            self._receiveSecondaryData,
-            column="voltage" if self._cmd["mode"] == "VC" else "current",
+        self._umaDev.add_receive_data_handler_scaled(
+            self._receiveSecondaryData, column="voltage" if self._cmd["mode"] == "VC" else "current"
         )
         self.dev.setMode(self._cmd["mode"])
-        self.dev.setHolding(self._cmd["holding"])
-        self.dev._dev.set_sample_rate(self._cmd["sampleRate"])
+        if self._cmd.get("holding", None) is not None:
+            self.dev.setHolding(self._cmd["holding"])
+        self._umaDev.set_sample_rate(self._cmd["sampleRate"])
         self.state = self.dev.getState()
 
+    def _receiveTimestamps(self, data):
+        if self._internalStartTime is None:
+            self._internalStartTime = data[0]
+        start = self._timestampBufferIndex
+        self._timestampBufferIndex = end = self._calculateEndIndex(start, data)
+        self._timestampDataBuffer[start:end] = data[0:end - start] - self._internalStartTime
+
+    def _calculateEndIndex(self, start, data):
+        end = start + data.shape[0]
+        return min(end, self._numPoints)
+
     def _receivePrimaryData(self, data):
-        pass
+        start = self._primaryBufferIndex
+        self._primaryBufferIndex = end = self._calculateEndIndex(start, data)
+        self._primaryDataBuffer[start:end] = data[0:end - start]
 
     def _receiveSecondaryData(self, data):
-        pass
+        start = self._secondaryBufferIndex
+        self._secondaryBufferIndex = end = self._calculateEndIndex(start, data)
+        self._secondaryDataBuffer[start:end] = data[0:end - start]
 
     def getResult(self):
-        result = {"command": self.getCommandDataForResult(), "primary": self.getPrimaryDataForResult()}
-        commandUnits = result["command"]["units"]
-        primaryUnits = result["primary"]["units"]
-        nPts = result["primary"]["info"]["numPts"]
-        rate = result["primary"]["info"]["sampleRate"]
+        result = {
+            "command": self.getCommandDataForResult(),
+            "primary": self.getPrimaryDataForResult(),
+            "secondary": self.getSecondaryDataForResult(),
+        }
 
-        daqState = {ch: result[ch]["info"] for ch in result}
-
-        timeVals = np.linspace(0, float(nPts - 1) / float(rate), nPts)
-        chanList = [np.atleast_2d(result[x]["data"]) for x in result]
-        arr = np.concatenate(chanList)
+        channelList = [np.atleast_2d(result[ch]["data"]) for ch in result if result[ch]["data"] is not None]
+        arr = np.concatenate(channelList)
 
         taskInfo = self._cmd.copy()
         if "command" in taskInfo:
             del taskInfo["command"]
         info = [
-            axis(name="Channel", cols=[("command", commandUnits), ("primary", primaryUnits)]),
-            axis(name="Time", units="s", values=timeVals),
-            {"ClampState": self.state, "DAQ": daqState, "Protocol": taskInfo, "startTime": self._startTime},
+            axis(name="Channel", cols=[(ch, result[ch]["units"]) for ch in result if result[ch]["data"] is not None]),
+            axis(name="Time", units="s", values=self._timestampDataBuffer),
+            {
+                "ClampState": self.state,
+                "DAQ": {ch: result[ch]["info"] for ch in result if result[ch]["data"] is not None},
+                "Protocol": taskInfo,
+                "startTime": self._startTime,
+            },
         ]
 
         return MetaArray(arr, info=info)
@@ -144,26 +179,33 @@ class SensapexClampTask(DeviceTask):
     def stop(self, abort=False):
         # TODO stop device (restore to previous running-ness?)
         # TODO reset holding value
-        column = "current" if self._cmd["mode"] == "VC" else "voltage"
-        self.dev._dev.remove_receive_data_handler(self._receivePrimaryData, column)
+        primary = "current" if self._cmd["mode"] == "VC" else "voltage"
+        self._umaDev.remove_receive_data_handler(self._receivePrimaryData, primary)
+        secondary = "current" if self._cmd["mode"] == "VC" else "voltage"
+        self._umaDev.remove_receive_data_handler(self._receiveSecondaryData, secondary)
+        self._umaDev.remove_receive_data_handler(self._receiveTimestamps, "ts")
 
     def getPrimaryDataForResult(self):
-        data = [1]  # TODO
         return {
             "info": {},  # TODO
-            "data": data,
+            "data": self._primaryDataBuffer,
             "units": "A" if self._cmd["mode"] == "VC" else "V",
             "name": "primary",
         }
 
     def getCommandDataForResult(self):
-        data = self._cmd["command"]
-        if data is not None:
-            data *= self.state["extCmdScale"]  # TODO
         return {
-            "data": data,
-            "holding": self._cmd["holding"],
+            "data": self._cmd.get("command", None),
+            "holding": self._cmd.get("holding", None),
             "info": {},  # TODO
             "name": "command",
             "units": "V" if self._cmd["mode"] == "VC" else "A",
+        }
+
+    def getSecondaryDataForResult(self):
+        return {
+            "info": {},  # TODO
+            "data": self._secondaryDataBuffer,
+            "units": "V" if self._cmd["mode"] == "VC" else "A",
+            "name": "secondary",
         }

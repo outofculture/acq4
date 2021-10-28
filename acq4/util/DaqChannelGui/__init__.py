@@ -25,6 +25,8 @@ class DaqMultiChannelTaskGuis(Qt.QObject):
     - Output channels have a function generator and plot widget
     - Output plots include the single and sequence commands, the most recently executed command
     - Includes logic for saving/restoring ui state, generating task commands
+    - To use this, you'll need to delegate all the task life-cycle methods and signals. These are: handleResult,
+      listSequence, generateTask, taskSequenceStarted, taskStarted, quit, saveState, restoreState, sigSequenceChanged
 
     Usage::
 
@@ -181,7 +183,6 @@ class DaqMultiChannelTaskGuis(Qt.QObject):
                 self._widgetsByChannel[ch].handleResult(result[ch], params)
 
     def quit(self):
-        TaskGui.quit(self)
         for ch in self._widgetsByChannel:
             self._widgetsByChannel[ch].quit()
 
