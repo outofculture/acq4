@@ -4,6 +4,7 @@ from __future__ import print_function
 from acq4.devices.Device import Device, TaskGui
 from acq4.util import Qt
 from acq4.util.DaqChannelGui import DaqMultiChannelTaskGuis
+from pyqtgraph import ComboBox
 
 
 class PatchClamp(Device):
@@ -98,7 +99,7 @@ class PatchClamp(Device):
 
 
 class ClampTaskCtrlWidget(Qt.QWidget):
-    """Widget for configuring clamp device-specific parameters in task ui.
+    """Widget for configuring clamp-device-specific parameters in task ui.
 
     PatchClamp subclasses may extend/replace this class to customize.
     """
@@ -109,14 +110,10 @@ class ClampTaskCtrlWidget(Qt.QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(3)
 
-        self.clampModeCombo = Qt.QComboBox()
-        self.clampModeCombo.addItems(list(self.parent().dev.listModes().keys()))
+        self.clampModeCombo = ComboBox(items=list(self.parent().dev.listModes().keys()))
 
 
 class ClampTaskGui(TaskGui):
-
-    _ctrlWidgetClass = ClampTaskCtrlWidget
-
     def __init__(self, dev, taskRunner):
         super(ClampTaskGui, self).__init__(dev, taskRunner)
         self._numPts = None
@@ -125,9 +122,9 @@ class ClampTaskGui(TaskGui):
         self._layout = Qt.QGridLayout()
         self.setLayout(self._layout)
         self._layout.addWidget(self._uiMaker.asWidget(), 0, 0)
-        self.controlsUi = self.initControlUi()
+        self._controlsUi = self.initControlUi()
         # calculated attrs
-        self._uiMaker.addControlWidget(self.controlsUi)
+        self._uiMaker.addControlWidget(self._controlsUi)
         self._outputWidget, _ = self._uiMaker.createChannelWidget("command", "ao", "V")
         self._inputWidget, _ = self._uiMaker.createChannelWidget("primary", "ai", "A")
 
@@ -135,7 +132,8 @@ class ClampTaskGui(TaskGui):
         self.clampModeChanged()
 
     def initControlUi(self):
-        ui = self._ctrlWidgetClass(self)
+        """TODO"""
+        ui = ClampTaskCtrlWidget(self)
         ui.clampModeCombo.currentIndexChanged.connect(self.clampModeChanged)
         return ui
 
@@ -155,13 +153,15 @@ class ClampTaskGui(TaskGui):
         return self._uiMaker.saveState()
 
     def restoreState(self, state):
-        return self._uiMaker.restoreState(state)
+        self._uiMaker.restoreState(state)
+        self.daqConfigChanged()
+        self.clampModeChanged()
 
     def generateTask(self, params=None):
         cmd = self._uiMaker.generateTask(params)
         cmd.update({
             "daqConfig": self.getDAQConfig(),
-            "mode": self.controlsUi.clampModeCombo.currentText(),
+            "mode": self.getClampMode(),
         })
         return cmd
 
@@ -174,12 +174,15 @@ class ClampTaskGui(TaskGui):
 
     def clampModeChanged(self):
         # TODO handle other modes
-        if self.controlsUi.clampModeCombo.currentText() == "VC":
-            self._outputWidget.setUnits("A")
-            self._inputWidget.setUnits("V")
-        else:  # IC
+        if self.getClampMode() == "VC":
             self._outputWidget.setUnits("V")
             self._inputWidget.setUnits("A")
+        else:  # IC
+            self._outputWidget.setUnits("A")
+            self._inputWidget.setUnits("V")
+
+    def getClampMode(self):
+        return self._controlsUi.clampModeCombo.currentText()
 
     def daqConfigChanged(self):
         daqConfig = self.getDAQConfig()

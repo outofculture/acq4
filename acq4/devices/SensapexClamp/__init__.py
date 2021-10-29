@@ -118,11 +118,12 @@ class SensapexClampTask(DeviceTask):
 
     def configure(self):
         self._umaDev.stop_receiving()
-        if self._cmd.get("command", {}).get("command", None) is not None:
-            self._umaDev.send_stimulus_scaled(self._cmd["command"])
+        if self.getCommand() is not None:
+            self._umaDev.send_stimulus_scaled(self.getCommand(), trigger_sync=True)
         self._timestampBufferIndex = 0
         self._primaryBufferIndex = 0
         self._secondaryBufferIndex = 0
+        # TODO preset
         # TODO honor save-data checkbox
         numPoints = self.numPts()
         self._timestampDataBuffer = np.zeros(shape=(numPoints,), dtype=float)
@@ -140,6 +141,9 @@ class SensapexClampTask(DeviceTask):
             self.dev.setHolding(self._cmd["holding"])
         self._umaDev.set_sample_rate(int(self._cmd["daqConfig"]["rate"]))
         self.state = self.dev.getState()
+
+    def getCommand(self):
+        return self._cmd.get("command", {}).get("command", None)
 
     def _receiveTimestamps(self, data):
         if self._internalStartTime is None:
@@ -207,7 +211,7 @@ class SensapexClampTask(DeviceTask):
 
     def getCommandDataForResult(self):
         return {
-            "data": self._cmd.get("command", {}).get("command", None),
+            "data": self.getCommand(),
             "holding": self._cmd.get("holding", None),
             "info": {},  # TODO
             "name": "command",

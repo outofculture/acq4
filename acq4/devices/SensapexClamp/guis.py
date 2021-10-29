@@ -22,17 +22,18 @@ class SensapexClampTaskGui(ClampTaskGui):
 
     def __init__(self, dev, taskRunner):
         super().__init__(dev, taskRunner)
-        self.taskRunner.sigTaskChanged.connect(self.taskRunnerChanged)
+        taskRunner.sigTaskChanged.connect(self.taskRunnerChanged)
         self.daqConfigChanged()
+
+    def initControlUi(self):
+        ui = SensapexTaskCtrlWidget(self)
+        ui.ui.sampleRateCombo.currentIndexChanged.connect(self.daqConfigChanged)
+        ui.ui.clampModeCombo.currentIndexChanged.connect(self.clampModeChanged)
+        return ui
 
     def taskRunnerChanged(self, name, value):
         if name == "duration":
             self.daqConfigChanged()
-
-    def initControlUi(self):
-        ui = super().initControlUi()
-        ui.ui.sampleRateCombo.currentIndexChanged.connect(self.daqConfigChanged)
-        return ui
 
     def generateTask(self, params=None):
         cmd = super().generateTask(params)
@@ -40,15 +41,18 @@ class SensapexClampTaskGui(ClampTaskGui):
         return cmd
 
     def getDAQConfig(self):
-        rate = float(self.controlsUi.ui.sampleRateCombo.value())
+        rate = float(self._controlsUi.ui.sampleRateCombo.value())
         taskDuration = self.taskRunner.getParam("duration")
         return {"rate": rate, "numPts": int(taskDuration * rate)}
+
+    def getClampMode(self):
+        return self._controlsUi.ui.clampModeCombo.currentText()
 
     def daqConfigChanged(self):
         super().daqConfigChanged()
         daqConfig = self.getDAQConfig()
-        self.controlsUi.ui.samplePeriodLabel.setText(siFormat(1.0 / daqConfig['rate'], suffix="s"))
-        self.controlsUi.ui.numPointsLabel.setText(str(daqConfig['numPts']))
+        self._controlsUi.ui.samplePeriodLabel.setText(siFormat(1.0 / daqConfig['rate'], suffix="s"))
+        self._controlsUi.ui.numPointsLabel.setText(str(daqConfig['numPts']))
 
 
 class SensapexClampDeviceGui(Qt.QWidget):
