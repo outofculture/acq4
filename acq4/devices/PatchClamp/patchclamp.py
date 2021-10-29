@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
-from acq4.devices.DAQGeneric import DAQGenericTaskGui
 from acq4.devices.Device import Device, TaskGui
 from acq4.util import Qt
-from pyqtgraph import WidgetGroup
+from acq4.util.DaqChannelGui import DaqMultiChannelTaskGuis
 
 
 class PatchClamp(Device):
@@ -66,6 +65,19 @@ class PatchClamp(Device):
         """
         raise NotImplementedError()
 
+    def listModes(self):
+        """Return a dict describing clamp modes available.
+
+        Format is::
+
+            {
+                'IC':  {'primaryUnits': 'A', 'secondaryUnits': 'V', 'commandAllowed': True},
+                'I=0': {'primaryUnits': 'A', 'secondaryUnits': 'V', 'commandAllowed': False},
+                'VC':  {'primaryUnits': 'V', 'secondaryUnits': 'A', 'commandAllowed': True},
+            }
+        """
+        raise NotImplementedError()
+
     def getMode(self):
         """Get the currently active clamp mode ('IC', 'VC', etc.)
         """
@@ -85,118 +97,94 @@ class PatchClamp(Device):
         return ClampTaskGui(self, taskRunner)
 
 
-class ClampTaskGui(TaskGui):
-    def __init__(self, dev: PatchClamp, taskRunner):
-        super(ClampTaskGui, self).__init__(dev, taskRunner)
-        self.clampDev = dev
+class ClampTaskCtrlWidget(Qt.QWidget):
+    """Widget for configuring clamp device-specific parameters in task ui.
 
+    PatchClamp subclasses may extend/replace this class to customize.
+    """
+    def __init__(self, parent):
+        Qt.QWidget.__init__(self, parent)
         self.layout = Qt.QGridLayout()
-        self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(3)
 
-        self.splitter1 = Qt.QSplitter()
-        self.splitter1.setOrientation(Qt.Qt.Horizontal)
-        self.layout.addWidget(self.splitter1)
+        self.clampModeCombo = Qt.QComboBox()
+        self.clampModeCombo.addItems(list(self.parent().dev.listModes().keys()))
 
-        self.splitter2 = Qt.QSplitter()
-        self.splitter2.setOrientation(Qt.Qt.Vertical)
-        self.modeCombo = Qt.QComboBox()
-        self.splitter2.addWidget(self.modeCombo)
-        self.modeCombo.addItems(self.clampDev.listModes())
 
-        self.splitter3 = Qt.QSplitter()
-        self.splitter3.setOrientation(Qt.Qt.Vertical)
+class ClampTaskGui(TaskGui):
 
-        (w1, p1) = self.createChannelWidget('primary')
-        (w2, p2) = self.createChannelWidget('command')
+    _ctrlWidgetClass = ClampTaskCtrlWidget
 
-        self.cmdWidget = w2
-        self.inputWidget = w1
-        self.cmdPlot = p2
-        self.inputPlot = p1
-        self.cmdWidget.setMeta('x', siPrefix=True, suffix='s', dec=True)
-        self.cmdWidget.setMeta('y', siPrefix=True, dec=True)
+    def __init__(self, dev, taskRunner):
+        super(ClampTaskGui, self).__init__(dev, taskRunner)
+        self._numPts = None
+        self._uiMaker = DaqMultiChannelTaskGuis(dev.name())
+        self.sigSequenceChanged.connect(self._uiMaker.sigSequenceChanged)
+        self._layout = Qt.QGridLayout()
+        self.setLayout(self._layout)
+        self._layout.addWidget(self._uiMaker.asWidget(), 0, 0)
+        self.controlsUi = self.initControlUi()
+        # calculated attrs
+        self._uiMaker.addControlWidget(self.controlsUi)
+        self._outputWidget, _ = self._uiMaker.createChannelWidget("command", "ao", "V")
+        self._inputWidget, _ = self._uiMaker.createChannelWidget("primary", "ai", "A")
 
-        self.splitter1.addWidget(self.splitter2)
-        self.splitter1.addWidget(self.splitter3)
-        self.splitter2.addWidget(w1)
-        self.splitter2.addWidget(w2)
-        self.splitter3.addWidget(p1)
-        self.splitter3.addWidget(p2)
-        self.splitter1.setSizes([100, 500])
+        self.daqConfigChanged()
+        self.clampModeChanged()
 
-        self.stateGroup = WidgetGroup([
-            (self.splitter1, 'splitter1'),
-            (self.splitter2, 'splitter2'),
-            (self.splitter3, 'splitter3'),
-        ])
+    def initControlUi(self):
+        ui = self._ctrlWidgetClass(self)
+        ui.clampModeCombo.currentIndexChanged.connect(self.clampModeChanged)
+        return ui
 
-        self.modeCombo.currentIndexChanged.connect(self.modeChanged)
-        self.modeChanged()
+    def listSequence(self):
+        return self._uiMaker.listSequence()
+
+    def taskSequenceStarted(self):
+        return self._uiMaker.taskSequenceStarted()
+
+    def taskStarted(self, params):
+        return self._uiMaker.taskStarted(params)
+
+    def quit(self):
+        return self._uiMaker.quit()
 
     def saveState(self):
-        """Return a dictionary representing the current state of the widget."""
-        state = {'daqState': DAQGenericTaskGui.saveState(self)}
-        state['mode'] = self.getMode()
-        # state['holdingEnabled'] = self.ctrl.holdingCheck.isChecked()
-        # state['holding'] = self.ctrl.holdingSpin.value()
-        return state
+        return self._uiMaker.saveState()
 
     def restoreState(self, state):
-        """Restore the state of the widget from a dictionary previously generated using saveState"""
-        # print 'state: ', state
-        # print 'DaqGeneric : ', dir(DAQGenericTaskGui)
-        if 'mode' in state:
-            self.modeCombo.setCurrentIndex(self.modeCombo.findText(state['mode']))
-        # self.ctrl.holdingCheck.setChecked(state['holdingEnabled'])
-        # if state['holdingEnabled']:
-        #    self.ctrl.holdingSpin.setValue(state['holding'])
-        if 'daqState' in state:
-            return DAQGenericTaskGui.restoreState(self, state['daqState'])
-        else:
-            return None
+        return self._uiMaker.restoreState(state)
 
     def generateTask(self, params=None):
-        daqTask = DAQGenericTaskGui.generateTask(self, params)
+        cmd = self._uiMaker.generateTask(params)
+        cmd.update({
+            "daqConfig": self.getDAQConfig(),
+            "mode": self.controlsUi.clampModeCombo.currentText(),
+        })
+        return cmd
 
-        return {
-            'mode': self.getMode(),
-            'daqProtocol': daqTask
-        }
+    def getDAQConfig(self) -> dict:
+        """Return a dict describing the DAQ configuration that will be used in this task.
 
-    def modeChanged(self):
-        global ivModes
-        ivm = ivModes[self.getMode()]
-        w = self.cmdWidget
+        Minimally includes the keys 'rate' and 'numPts'.
+        """
+        raise NotImplementedError()
 
-        if ivm == 'VC':
-            scale = 1e-3
-            cmdUnits = 'V'
-            inpUnits = 'A'
-        else:
-            scale = 1e-12
-            cmdUnits = 'A'
-            inpUnits = 'V'
+    def clampModeChanged(self):
+        # TODO handle other modes
+        if self.controlsUi.clampModeCombo.currentText() == "VC":
+            self._outputWidget.setUnits("A")
+            self._inputWidget.setUnits("V")
+        else:  # IC
+            self._outputWidget.setUnits("V")
+            self._inputWidget.setUnits("A")
 
-        self.inputWidget.setUnits(inpUnits)
-        self.cmdWidget.setUnits(cmdUnits)
-        self.cmdWidget.setMeta('y', minStep=scale, step=scale * 10, value=0.)
-        self.inputPlot.setLabel('left', units=inpUnits)
-        self.cmdPlot.setLabel('left', units=cmdUnits)
-        # w.setScale(scale)
-        # for s in w.getSpins():
-        # s.setOpts(minStep=scale)
+    def daqConfigChanged(self):
+        daqConfig = self.getDAQConfig()
+        self._outputWidget.daqStateChanged(daqConfig)
+        self._inputWidget.daqStateChanged(daqConfig)
 
-        self.cmdWidget.updateHolding()
-
-    def getMode(self):
-        return str(self.modeCombo.currentText())
-
-    def sequenceChanged(self):
-        self.sigSequenceChanged.emit(self.clampDev.name())
-
-    def getChanHolding(self, chan):
-        if chan == 'command':
-            return self.clampDev.getHolding(self.getMode())
-        else:
-            raise Exception("Can't get holding value for channel %s" % chan)
+    def handleResult(self, result, params):
+        return self._uiMaker.handleResult(result, params)

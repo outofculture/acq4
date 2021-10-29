@@ -274,12 +274,12 @@ class DeviceTask(object):
     def abort(self):
         self.stop(abort=True)
 
-    
+
 class TaskGui(Qt.QWidget):
     
     sigSequenceChanged = Qt.Signal(object)
     
-    def __init__(self, dev, taskRunner):
+    def __init__(self, dev, taskRunner: "TaskRunner"):
         Qt.QWidget.__init__(self)
         self.dev = dev
         self.taskRunner = taskRunner

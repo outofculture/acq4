@@ -49,6 +49,12 @@ class SensapexClamp(PatchClamp):
         else:
             self._dev.set_holding_voltage(value)
 
+    def listModes(self):
+        return {
+            "VC": {"primaryUnits": "V", "secondaryUnits": "A", "command_allowed": True},
+            "IC": {"primaryUnits": "A", "secondaryUnits": "V", "command_allowed": True},
+        }
+
     def autoPipetteOffset(self):
         pass  # TODO
 
@@ -80,14 +86,16 @@ class SensapexClamp(PatchClamp):
 
 class SensapexClampTask(DeviceTask):
     def __init__(self, dev: SensapexClamp, cmd: dict, parentTask):
-        required_keys = {"numPts", "mode", "sampleRate"}
+        required_keys = {"daqConfig", "mode"}
+        req_daq_keys = {"rate", "numPts"}
         if not required_keys.issubset(cmd.keys()):
             raise ValueError(f"Task specification missing {required_keys - cmd.keys()}")
+        if not req_daq_keys.issubset(cmd["daqConfig"].keys()):
+            raise ValueError(f"Task specification missing {req_daq_keys - cmd['daqConfig'].keys()}")
         super().__init__(dev, cmd, parentTask)
         self.dev = dev
         self._umaDev = dev._dev
         self._cmd = cmd
-        self._numPoints = cmd["numPts"]
         self._startTime = None
         self.state = None
         self._internalStartTime = None
@@ -103,19 +111,23 @@ class SensapexClampTask(DeviceTask):
         self._umaDev.start_receiving()
 
     def isDone(self):
-        return self._timestampBufferIndex >= self._numPoints
+        return self._timestampBufferIndex >= self.numPts()
+
+    def numPts(self):
+        return self._cmd['daqConfig']['numPts']
 
     def configure(self):
         self._umaDev.stop_receiving()
-        if self._cmd.get("command", None) is not None:
+        if self._cmd.get("command", {}).get("command", None) is not None:
             self._umaDev.send_stimulus_scaled(self._cmd["command"])
         self._timestampBufferIndex = 0
         self._primaryBufferIndex = 0
         self._secondaryBufferIndex = 0
         # TODO honor save-data checkbox
-        self._timestampDataBuffer = np.zeros(shape=(self._numPoints,), dtype=float)
-        self._primaryDataBuffer = np.zeros(shape=(self._numPoints,), dtype=float)
-        self._secondaryDataBuffer = np.zeros(shape=(self._numPoints,), dtype=float)
+        numPoints = self.numPts()
+        self._timestampDataBuffer = np.zeros(shape=(numPoints,), dtype=float)
+        self._primaryDataBuffer = np.zeros(shape=(numPoints,), dtype=float)
+        self._secondaryDataBuffer = np.zeros(shape=(numPoints,), dtype=float)
         self._umaDev.add_receive_data_handler_scaled(self._receiveTimestamps, column="ts")
         self._umaDev.add_receive_data_handler_scaled(
             self._receivePrimaryData, column="current" if self._cmd["mode"] == "VC" else "voltage"
@@ -126,7 +138,7 @@ class SensapexClampTask(DeviceTask):
         self.dev.setMode(self._cmd["mode"])
         if self._cmd.get("holding", None) is not None:
             self.dev.setHolding(self._cmd["holding"])
-        self._umaDev.set_sample_rate(self._cmd["sampleRate"])
+        self._umaDev.set_sample_rate(int(self._cmd["daqConfig"]["rate"]))
         self.state = self.dev.getState()
 
     def _receiveTimestamps(self, data):
@@ -138,7 +150,7 @@ class SensapexClampTask(DeviceTask):
 
     def _calculateEndIndex(self, start, data):
         end = start + data.shape[0]
-        return min(end, self._numPoints)
+        return min(end, self.numPts())
 
     def _receivePrimaryData(self, data):
         start = self._primaryBufferIndex
@@ -195,7 +207,7 @@ class SensapexClampTask(DeviceTask):
 
     def getCommandDataForResult(self):
         return {
-            "data": self._cmd.get("command", None),
+            "data": self._cmd.get("command", {}).get("command", None),
             "holding": self._cmd.get("holding", None),
             "info": {},  # TODO
             "name": "command",
