@@ -103,6 +103,7 @@ class DaqMultiChannelTaskGuis(Qt.QObject):
 
     def addControlWidget(self, widget):
         self._extraControlWidgets.append(widget)
+        self.stateGroup.autoAdd(widget)
         if self.topSplitter is not None:
             self.controlSplitter.addWidget(widget)
 

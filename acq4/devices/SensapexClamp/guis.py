@@ -53,6 +53,7 @@ class SensapexClampTaskGui(TaskGui):
     def generateTask(self, params=None):
         self.updateDaqParameters()
         outputTask = self._outputWidget.generateTask()
+        # TODO what is preset?
         return {
             "command": outputTask.get("command"),
             "sampleRate": self.getSampleRate(),
@@ -87,9 +88,6 @@ class SensapexClampTaskGui(TaskGui):
 
     def getSampleRate(self):
         return self.controlsUi.sampleRateCombo.value()
-
-    def whatInterfaceDoesThisObjectNeed(self):
-        self.fail()  # TODO createTask?
 
 
 class SensapexClampDeviceGui(Qt.QWidget):

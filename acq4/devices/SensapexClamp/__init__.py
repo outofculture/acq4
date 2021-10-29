@@ -168,7 +168,7 @@ class SensapexClampTask(DeviceTask):
             axis(name="Time", units="s", values=self._timestampDataBuffer),
             {
                 "ClampState": self.state,
-                "DAQ": {ch: result[ch]["info"] for ch in result if result[ch]["data"] is not None},
+                "DAQ": {ch: result[ch]["info"] for ch in result},
                 "Protocol": taskInfo,
                 "startTime": self._startTime,
             },
