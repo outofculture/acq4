@@ -1,4 +1,4 @@
-from acq4.devices.PatchClamp.patchclamp import ClampTaskGui, ClampTaskCtrlWidget
+from acq4.devices.PatchClamp.patchclamp import ClampTaskGui
 from acq4.util import Qt
 from pyqtgraph import siFormat
 from sensapex.uma import UMA
@@ -6,30 +6,21 @@ from sensapex.uma import UMA
 extraTaskControlsTemplate = Qt.importTemplate(".extraTaskControls")
 
 
-class SensapexTaskCtrlWidget(ClampTaskCtrlWidget):
-    def __init__(self, parent):
-        super().__init__(parent)
-        ourWidget = Qt.QWidget()
-        self.ui = extraTaskControlsTemplate()
-        self.ui.setupUi(ourWidget)
-        self.layout.addWidget(ourWidget, self.layout.rowCount(), 0, 1, 2)
-        self.ui.sampleRateCombo.setItems({str(r): r for r in UMA.VALID_SAMPLE_RATES})
-        self.ui.sampleRateCombo.setValue(parent.dev.getSampleRate())
-
-
 class SensapexClampTaskGui(ClampTaskGui):
-    _ctrlWidgetClass = SensapexTaskCtrlWidget
-
     def __init__(self, dev, taskRunner):
         super().__init__(dev, taskRunner)
         taskRunner.sigTaskChanged.connect(self.taskRunnerChanged)
         self.daqConfigChanged()
 
-    def initControlUi(self):
-        ui = SensapexTaskCtrlWidget(self)
-        ui.ui.sampleRateCombo.currentIndexChanged.connect(self.daqConfigChanged)
-        ui.ui.clampModeCombo.currentIndexChanged.connect(self.clampModeChanged)
-        return ui
+    def initControlUi(self, layout):
+        self.ui = extraTaskControlsTemplate()
+        self._extraCtrlWidget = Qt.QWidget()
+        self.ui.setupUi(self._extraCtrlWidget)
+        layout.addWidget(self._extraCtrlWidget, layout.rowCount(), 0, 1, 2)
+        self.ui.sampleRateCombo.setItems({str(r): r for r in UMA.VALID_SAMPLE_RATES})
+        self.ui.sampleRateCombo.setValue(self.dev.getSampleRate())
+        self.ui.sampleRateCombo.currentIndexChanged.connect(self.daqConfigChanged)
+        self.ui.clampModeCombo.currentIndexChanged.connect(self.clampModeChanged)
 
     def taskRunnerChanged(self, name, value):
         if name == "duration":

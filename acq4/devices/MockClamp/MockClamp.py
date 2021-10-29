@@ -16,8 +16,11 @@ from acq4.util.debug import printExc
 
 Ui_MockClampDevGui = Qt.importTemplate('.devTemplate')
 
-ivModes = {'I=0': 'IC', 'VC': 'VC', 'IC': 'IC'}
-modeNames = ['VC', 'I=0', 'IC']
+modes = {
+    'IC': {'type': 'IC', 'commandAllowed': True},
+    'I=0': {'type': 'IC', 'commandAllowed': False},
+    'VC': {'type': 'VC', 'commandAllowed': True},
+}
 
 
 class MockClamp(PatchClamp):
@@ -66,28 +69,24 @@ class MockClamp(PatchClamp):
     def createTask(self, cmd, parentTask):
         return MockClampTask(self, cmd, parentTask)
 
+    def taskInterface(self, taskRunner):
+        return MockClampTaskGui(self, taskRunner)
+
     def deviceInterface(self, win):
         return MockClampDevGui(self)
 
     def setHolding(self, mode=None, value=None, force=False):
-        global ivModes
         with self.devLock:
             currentMode = self.getMode()
             if mode is None:
                 mode = currentMode
-            ivMode = ivModes[mode]  ## determine vc/ic
+            ivMode = self.listModes()[mode]['type']  ## determine vc/ic
 
             if value is None:
                 value = self.holding[ivMode]
             else:
                 self.holding[ivMode] = value
 
-            if ivMode == ivModes[currentMode] or force:
-                # gain = self.getCmdGain(mode)
-                ## override the scale since getChanScale won't necessarily give the correct value
-                ## (we may be about to switch modes)
-                # DAQGeneric.setChanHolding(self, 'command', value, scale=gain)
-                pass
             self.sigHoldingChanged.emit('primary', self.holding.copy())
 
     def setChanHolding(self, chan, value=None):
@@ -96,38 +95,38 @@ class MockClamp(PatchClamp):
         else:
             self.daqDev.setChanHolding(self, chan, value)
 
-    def getChanHolding(self, chan):
+    def getChanHolding(self, chan: str):
         if chan == 'command':
             return self.getHolding()
         else:
             return self.daqDev.getChanHolding(chan)
 
-    def getHolding(self, mode=None):
-        global ivModes
+    def getHolding(self, mode) -> float:
         with self.devLock:
             if mode is None:
                 mode = self.getMode()
-            ivMode = ivModes[mode]  ## determine vc/ic
+            ivMode = self.listModes()[mode]['type']  # determine vc/ic
             return self.holding[ivMode]
 
-    def getState(self):
+    def getState(self) -> dict:
         return {
             'mode': self.getMode(),
         }
 
-    def listModes(self):
-        global modeNames
-        return modeNames
+    def listModes(self) -> dict:
+        global modes
+        return modes
 
-    def setMode(self, mode):
+    def setMode(self, mode: str):
         """Set the mode of the AxoPatch (by requesting user intervention). Takes care of switching holding levels in I=0 mode if needed."""
         mode = mode.upper()
         startMode = self.getMode()
         if startMode == mode:
             return
 
-        startIvMode = ivModes[startMode]
-        ivMode = ivModes[mode]
+        modes = self.listModes()
+        startIvMode = modes[startMode]['type']
+        ivMode = modes[mode]['type']
         if (startIvMode == 'VC' and ivMode == 'IC') or (startIvMode == 'IC' and ivMode == 'VC'):
             ## switch to I=0 first
             # self.requestModeSwitch('I=0')
@@ -142,21 +141,6 @@ class MockClamp(PatchClamp):
 
     def getMode(self):
         return self.mode
-
-    def getChanUnits(self, chan):
-        global ivModes
-        iv = ivModes[self.getMode()]
-        if iv == 'VC':
-            units = ['V', 'A']
-        else:
-            units = ['A', 'V']
-
-        if chan == 'command':
-            return units[0]
-        elif chan == 'secondary':
-            return units[0]
-        elif chan == 'primary':
-            return units[1]
 
     def readChannel(self, ch):
         pass
@@ -251,6 +235,13 @@ class MockClampTask(DAQGenericTask):
         result._info[-1]['startTime'] = next(iter(result._info[-1][self.clampDev.getDAQName("primary")].values()))['startTime']
         result._info[-1]['ClampState'] = self.ampState
         return result
+
+
+class MockClampTaskGui(ClampTaskGui):
+    def getDAQConfig(self):
+        daqName = self.dev.getDAQName('primary')
+        daqUI = self.taskRunner.getDevice(daqName)
+        return daqUI.currentState()
 
 
 class MockClampDevGui(Qt.QWidget):
