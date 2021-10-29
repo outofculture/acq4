@@ -132,7 +132,7 @@ class ClampTaskGui(TaskGui):
 
         self.ctrlWidget = Qt.QWidget(self)
         self.ctrlLayout = Qt.QGridLayout()
-        self.ctrlWidget.setLayout(self.layout)
+        self.ctrlWidget.setLayout(self.ctrlLayout)
         self.ctrlLayout.setContentsMargins(0, 0, 0, 0)
         self.ctrlLayout.setSpacing(3)
 
@@ -206,7 +206,7 @@ class ClampTaskGui(TaskGui):
             self.primaryWidget.setUnits("V")
 
     def getClampMode(self):
-        return self._controlsUi.clampModeCombo.currentText()
+        return self.clampModeCombo.currentText()
 
     def daqConfigChanged(self):
         daqConfig = self.getDAQConfig()
