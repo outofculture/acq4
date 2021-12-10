@@ -7,14 +7,11 @@ from acq4.devices.DAQGeneric import DAQGeneric, DAQGenericTask
 from acq4.devices.OptomechDevice import OptomechDevice
 from .LaserDevGui import LaserDevGui
 from .LaserTaskGui import LaserTaskGui
-import os
 import time
 import numpy as np
 from scipy import stats
 from pyqtgraph.functions import siFormat
 from acq4.util.HelpfulException import HelpfulException
-import pyqtgraph as pg
-import pyqtgraph.metaarray as metaarray
 from acq4.devices.NiDAQ.nidaq import NiDAQ
 import acq4.util.ptime as ptime
 from six.moves import range

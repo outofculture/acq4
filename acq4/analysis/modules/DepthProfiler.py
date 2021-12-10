@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
+
+from MetaArray import MetaArray
 from six.moves import range
 """
 Used for measuring illumination depth profiles from photobleached tissue.
@@ -8,7 +10,6 @@ from acq4.util import Qt
 from acq4.analysis.AnalysisModule import AnalysisModule
 from collections import OrderedDict
 import pyqtgraph as pg
-from pyqtgraph.metaarray import MetaArray
 import numpy as np
 import acq4.util.functions as fn
 #import pyqtgraph.ProgressDialog as ProgressDialog

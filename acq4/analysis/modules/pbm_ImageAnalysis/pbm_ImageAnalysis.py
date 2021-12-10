@@ -25,6 +25,7 @@ This module provides:
 from __future__ import print_function
 
 import matplotlib.pyplot as PL
+from MetaArray import MetaArray
 from six.moves import map
 from six.moves import zip
 
@@ -40,7 +41,6 @@ import pyqtgraph as pg
 import pyqtgraph.debug as debug
 import acq4.util.DatabaseGui as DatabaseGui
 import PIL as Image
-from pyqtgraph.metaarray import MetaArray
 import numpy as np
 import scipy
 from acq4.analysis.tools import Utility
@@ -3154,4 +3154,3 @@ class pyqtgrwindow(Qt.QMainWindow):
         self.setWindowTitle(title)
         self.view.setCentralItem(self.layout)
         self.view.show()
-        

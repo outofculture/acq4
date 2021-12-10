@@ -3,7 +3,7 @@ from __future__ import print_function
 
 import os
 
-from pyqtgraph.metaarray import MetaArray as MA
+from MetaArray import MetaArray
 from numpy import ndarray
 from .FileType import FileType
 
@@ -17,14 +17,14 @@ from .FileType import FileType
         #return ".ma"
         
 #def fromFile(fileName, info=None):
-    #return MA(file=fileName)
+    #return MetaArray(file=fileName)
 
 
 
 class MetaArray(FileType):
     
     extensions = ['.ma']   ## list of extensions handled by this class
-    dataTypes = [MA, ndarray]    ## list of python types handled by this class
+    dataTypes = [MetaArray, ndarray]    ## list of python types handled by this class
     priority = 100      ## High priority; MetaArray is the preferred way to move data..
     
     @classmethod
@@ -36,12 +36,12 @@ class MetaArray(FileType):
         if fileName[-len(ext):] != ext:
             fileName = fileName + ext
             
-        if not isinstance(data, MA):
-            data = MA(data)
+        if not isinstance(data, MetaArray):
+            data = MetaArray(data)
         data.write(os.path.join(dirHandle.name(), fileName), **args)
         return fileName
         
     @classmethod
     def read(cls, fileHandle, *args, **kargs):
         """Read a file, return a data object"""
-        return MA(file=fileHandle.name(), *args, **kargs)
+        return MetaArray(file=fileHandle.name(), *args, **kargs)

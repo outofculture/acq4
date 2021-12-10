@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import os
 
+from MetaArray import MetaArray
 from PIL import Image
 from six.moves import range
 
@@ -66,7 +67,6 @@ if hasattr(Image, 'VERSION') and  Image.VERSION == '1.1.6':
 #import png ## better png support than PIL
 
 from numpy import array, ndarray
-from pyqtgraph.metaarray import MetaArray as MA
 from .FileType import FileType
 
 #import libtiff
@@ -79,7 +79,7 @@ class Array(ndarray):  ## just allows us to add some dynamic attributes
 class ImageFile(FileType):
     
     extensions = ['.png', '.tif', '.jpg']   ## list of extensions handled by this class
-    dataTypes = [MA, ndarray]    ## list of python types handled by this class
+    dataTypes = [MetaArray, ndarray]    ## list of python types handled by this class
     priority = 50      ## medium priority; MetaArray should be used for writing arrays if possible;
     
     @classmethod

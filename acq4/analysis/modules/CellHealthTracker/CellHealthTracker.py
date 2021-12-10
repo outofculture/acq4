@@ -1,9 +1,11 @@
 from __future__ import print_function
+
+from MetaArray import MetaArray
+
 from acq4.util import Qt
 from acq4.analysis.AnalysisModule import AnalysisModule
 from collections import OrderedDict
 import pyqtgraph as pg
-from pyqtgraph.metaarray import MetaArray
 import numpy as np
 import scipy
 import acq4.util.functions as fn

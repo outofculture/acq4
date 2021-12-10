@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
-from pyqtgraph.metaarray import MetaArray as MA
+from MetaArray import MetaArray
 from numpy import ndarray, loadtxt
 from .FileType import FileType
 from six.moves import range
@@ -16,14 +16,14 @@ from six.moves import range
         #return ".ma"
         
 #def fromFile(fileName, info=None):
-    #return MA(file=fileName)
+    #return MetaArray(file=fileName)
 
 
 
 class CSVFile(FileType):
     
     extensions = ['.csv']   ## list of extensions handled by this class
-    dataTypes = [MA, ndarray]    ## list of python types handled by this class
+    dataTypes = [MetaArray, ndarray]    ## list of python types handled by this class
     priority = 10      ## low priority; MetaArray is the preferred way to move data..
     
     #@classmethod

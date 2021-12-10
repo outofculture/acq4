@@ -1,7 +1,9 @@
 from __future__ import print_function
 import os, re, zipfile
+
+from MetaArray import MetaArray
+
 from acq4.analysis.modules.EventDetector.EventDetector import EventDetector
-from pyqtgraph.metaarray import MetaArray
 import pyqtgraph as pg
 import numpy as np
 from acq4.util import Qt

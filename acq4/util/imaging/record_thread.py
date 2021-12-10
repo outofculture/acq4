@@ -3,13 +3,13 @@ from __future__ import print_function
 import time
 
 import numpy as np
+from MetaArray import MetaArray
 
 from acq4 import Manager
 from acq4.util import Qt
 from acq4.util import debug
 from acq4.util.Mutex import Mutex
 from acq4.util.Thread import Thread
-from pyqtgraph.metaarray import MetaArray
 
 try:
     import acq4.filetypes.ImageFile

@@ -4,8 +4,7 @@ from acq4.devices.Device import DeviceTask
 from acq4.devices.PatchClamp import PatchClamp
 from acq4.devices.SensapexClamp.guis import SensapexClampTaskGui, SensapexClampDeviceGui
 from acq4.util import ptime
-from pyqtgraph import MetaArray
-from pyqtgraph.metaarray import axis
+from MetaArray import MetaArray, axis
 from sensapex.uma import UMA
 
 __all__ = ["SensapexClamp", "SensapexClampTask"]

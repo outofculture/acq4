@@ -5,9 +5,10 @@ import time
 
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph import Vector, SRTTransform3D, MetaArray
+from MetaArray import MetaArray, axis
+from pyqtgraph import Vector, SRTTransform3D
 from pyqtgraph.debug import Profiler
-from pyqtgraph.metaarray import axis
+
 from six.moves import range
 
 import acq4.util.ptime as ptime

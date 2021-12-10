@@ -1,5 +1,7 @@
 #  -*- coding: utf-8 -*-
 from __future__ import print_function
+
+from MetaArray import MetaArray
 from six.moves import map
 from six.moves import range
 """
@@ -27,7 +29,6 @@ import scipy
 from acq4.analysis.AnalysisModule import AnalysisModule
 import pyqtgraph as pg
 from pyqtgraph import configfile
-from pyqtgraph.metaarray import MetaArray
 
 standard_font = 'Arial'
 

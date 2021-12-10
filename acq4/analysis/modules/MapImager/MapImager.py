@@ -1,16 +1,14 @@
 from __future__ import print_function
+
+from MetaArray import MetaArray
+
 from acq4.util import Qt
 import os
 from acq4.analysis.AnalysisModule import AnalysisModule
 from collections import OrderedDict
-import pyqtgraph as pg
-from pyqtgraph.metaarray import MetaArray
 import numpy as np
-import scipy
-import acq4.util.functions as fn
 from acq4.util.HelpfulException import HelpfulException
 from pyqtgraph.widgets.FileDialog import FileDialog
-import sys
 from acq4.util.DatabaseGui.DatabaseQueryWidget import DatabaseQueryWidget
 from .SpatialCorrelator import SpatialCorrelator
 from .MapConvolver import MapConvolver

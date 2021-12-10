@@ -2,6 +2,8 @@ from __future__ import print_function
 
 import os
 import sys
+
+from MetaArray import MetaArray
 from six.moves import range
 
 md = os.path.abspath(os.path.split(__file__)[0])
@@ -13,7 +15,6 @@ labelFile = "../../atlas/CochlearNucleus/images/cochlear_nucleus_label.ma"
 from acq4.util import Qt
 import pyqtgraph as pg
 import numpy as np
-from pyqtgraph.metaarray import MetaArray
 
 
 Ui_Form = Qt.importTemplate('.builderTemplate')

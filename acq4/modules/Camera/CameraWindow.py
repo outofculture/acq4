@@ -9,9 +9,9 @@ from collections import OrderedDict
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.dockarea as dockarea
+from MetaArray import MetaArray
 from pyqtgraph import ptime
 from pyqtgraph.graphicsItems.ROI import RulerROI
-from pyqtgraph.metaarray import MetaArray
 from six.moves import range
 
 import acq4.Manager as Manager

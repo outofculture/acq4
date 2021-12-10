@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function
-
 from acq4.devices.Device import Device, TaskGui
 from acq4.util import Qt
 from acq4.util.DaqChannelGui import DaqMultiChannelTaskGuis
@@ -115,8 +112,6 @@ class PatchClamp(Device):
 
     def taskInterface(self, taskRunner):
         return ClampTaskGui(self, taskRunner)
-
-
 
 
 class ClampTaskGui(TaskGui):

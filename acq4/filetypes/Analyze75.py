@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
-from pyqtgraph.metaarray import MetaArray
+from MetaArray import MetaArray
+
 from .FileType import FileType
 
 
