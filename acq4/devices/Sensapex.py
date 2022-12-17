@@ -6,7 +6,7 @@ import time
 
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph import ptime, Transform3D, solve3DTransform
+from pyqtgraph import Transform3D, solve3DTransform
 
 from acq4.util import Qt
 from acq4.drivers.sensapex import UMP, version_info
@@ -120,7 +120,7 @@ class Sensapex(Stage):
             # using timeout=0 forces read from cache (the monitor thread ensures
             # these values are up to date)
             pos = self.dev.get_pos(timeout=0)[:3]
-            self._lastUpdate = ptime.time()
+            self._lastUpdate = time.perf_counter()
             if self._lastPos is not None:
                 dif = np.linalg.norm(np.array(pos, dtype=float) - np.array(self._lastPos, dtype=float))
 
@@ -139,7 +139,7 @@ class Sensapex(Stage):
 
     def _positionChanged(self, dev, newPos, oldPos):
         # called by driver poller when position has changed
-        now = ptime.time()
+        now = time.perf_counter()
         # rate limit updates to 10 Hz
         wait = 100e-3 - (now - self._lastUpdate)
         if wait > 0:
@@ -225,7 +225,7 @@ class SensapexMoveFuture(MoveFuture):
         print(f"stepwise speed: {speed}  delta: {delta}  distance: {distance}  duration: {duration}")
         while True:
             # where should be be at this point?
-            elapsedTime = ptime.time() - self.startTime
+            elapsedTime = time.perf_counter() - self.startTime
             fractionComplete = min(1.0, elapsedTime / duration)
             currentTarget = self.startPos + delta * fractionComplete
 

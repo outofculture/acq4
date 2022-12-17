@@ -1,10 +1,17 @@
-from __future__ import print_function
 """
 Thorlabs MFC1 : microscope focus controller based on Trinamic TMCM-140-42-SE
 and PDx-140-42-SE.
 
 """
+import time
 
+try:
+    # this is nicer because it provides deadlock debugging information
+    from acq4.util.Mutex import RecursiveMutex as RLock
+except ImportError:
+    from threading import RLock
+
+from .tmcm import TMCM140, TMCMError
 
 """
 Hardware notes:
@@ -19,16 +26,6 @@ Hardware notes:
 
 * Setting encoder prescaler to 8192 yields +1 per encoder step 
 """
-try:
-    # this is nicer because it provides deadlock debugging information
-    from acq4.util.Mutex import RecursiveMutex as RLock
-except ImportError:
-    from threading import RLock
-
-from pyqtgraph import ptime
-
-from .tmcm import TMCM140, TMCMError
-
 
 
 def threadsafe(method):
@@ -202,11 +199,11 @@ class MFC1(object):
         if self.program_running():
             self._interrupt_move()
             self.mcm.set_global('gp0', position)
-            start = ptime.time()
+            start = time.perf_counter()
         else:
             self.mcm.set_global('gp0', position)
             self.mcm.start_program()
-            start = ptime.time()
+            start = time.perf_counter()
 
         self._target_position = position
 

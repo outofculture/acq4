@@ -1,16 +1,15 @@
-from __future__ import print_function, division
-import time, threading, functools
-import warnings
-
 import numpy as np
-import scipy.optimize, scipy.ndimage
-from pyqtgraph import ptime
-from ...Manager import getManager
-from acq4.util import Qt
-from acq4.util.Thread import Thread
-from acq4.util.Mutex import Mutex
-from acq4.util.debug import printExc
+import scipy.ndimage
+import scipy.optimize
+import time
+import warnings
 from six.moves import range
+
+from acq4.util import Qt
+from acq4.util.Mutex import Mutex
+from acq4.util.Thread import Thread
+from acq4.util.debug import printExc
+from ...Manager import getManager
 
 
 class TestPulseThread(Thread):
@@ -87,7 +86,7 @@ class TestPulseThread(Thread):
         while True:
             try:
                 self._checkStop()
-                start = ptime.time()
+                start = time.perf_counter()
                 self.runOnce(_checkStop=True)
 
                 interval = self.params['interval']
@@ -98,7 +97,7 @@ class TestPulseThread(Thread):
                 # otherwise, wait until interval is over
                 while True:
                     nextRun = start + self.params['interval']
-                    now = ptime.time()
+                    now = time.perf_counter()
                     if now >= nextRun:
                         break
                     time.sleep(min(0.03, nextRun-now))

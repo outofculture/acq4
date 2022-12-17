@@ -876,7 +876,7 @@ class Grid(pg.CrosshairROI):
             #self._needScatterUpdate = False
 
 
-class TargetOcclusion(pg.PolygonROI):
+class TargetOcclusion(pg.PolyLineROI):
 
     sigStateChanged = Qt.Signal(object)
 
@@ -884,7 +884,7 @@ class TargetOcclusion(pg.PolygonROI):
         self.name = name
         points = args.get('points', ([0,0], [0,ptSize*3], [ptSize*3,0]))
         pos = (0,0)
-        pg.PolygonROI.__init__(self, points, pos)
+        pg.PolyLineROI.__init__(self, points, pos)
         self.setZValue(10000000)
         self.params = pTypes.SimpleParameter(name=self.name, type='bool', value=True, removable=True, renamable=True, children=[
         ])

@@ -1,17 +1,10 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function, with_statement
-
+import numpy as np
 import threading
 import time
-
-import numpy as np
-import pyqtgraph as pg
-from pyqtgraph import Vector, SRTTransform3D, MetaArray
-from pyqtgraph.debug import Profiler
-from pyqtgraph.metaarray import axis
 from six.moves import range
 
-import acq4.util.ptime as ptime
+import pyqtgraph as pg
+from MetaArray import MetaArray, axis
 from acq4.devices.DAQGeneric import DAQGeneric, DAQGenericTask
 from acq4.devices.Microscope import Microscope
 from acq4.devices.OptomechDevice import OptomechDevice
@@ -20,6 +13,8 @@ from acq4.util import imaging
 from acq4.util.Mutex import Mutex
 from acq4.util.Thread import Thread
 from acq4.util.debug import printExc
+from pyqtgraph import Vector, SRTTransform3D
+from pyqtgraph.debug import Profiler
 from .CameraInterface import CameraInterface
 from .deviceGUI import CameraDeviceGui
 from .taskGUI import CameraTaskGui
@@ -279,7 +274,7 @@ class Camera(DAQGeneric, OptomechDevice):
         info["objective"] = ss.get("objective", None)
         info["lightSource"] = ss.get("lightSourceState", None)
         info["deviceTransform"] = pg.SRTTransform3D(ss["transform"])
-        info["time"] = ptime.time()
+        info["time"] = time.perf_counter()
 
         f = Frame(frames, info)
         self.newFrame(f)  # allow others access to this frame (for example, camera module can update)
@@ -840,12 +835,12 @@ class AcquireThread(Thread):
             self.dev.startCamera()
             self.cameraStartEvent.set()
 
-            lastFrameTime = lastStopCheck = ptime.time()
+            lastFrameTime = lastStopCheck = time.perf_counter()
             frameInfo = {}
             scopeState = None
 
             while True:
-                now = ptime.time()
+                now = time.perf_counter()
                 frames = self.dev.newFrames()
 
                 # If a new frame is available, process it and inform other threads
@@ -911,7 +906,7 @@ class AcquireThread(Thread):
                         break
                     self.lock.unlock()
 
-                    diff = ptime.time() - lastFrameTime
+                    diff = time.perf_counter() - lastFrameTime
                     if diff > (10 + exposure):
                         if mode == "Normal":
                             self.dev.noFrameWarning(diff)

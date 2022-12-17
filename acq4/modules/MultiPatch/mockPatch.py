@@ -1,7 +1,8 @@
 import numpy as np
-from acq4.util import Qt
-from pyqtgraph import ptime
+import time
+
 from acq4.devices.PatchPipette.testpulse import TestPulse
+from acq4.util import Qt
 
 
 class MockPatch(object):
@@ -29,10 +30,10 @@ class MockPatch(object):
         self.capacitance = 2e-12
         self.membranePotential = -70e-3
         self.inputResistance = 150e6
-        self.lastUpdate = ptime.time()
+        self.lastUpdate = time.perf_counter()
 
     def generateAnalysis(self):
-        now = ptime.time()
+        now = time.perf_counter()
         dt = now - self.lastUpdate
         self.lastUpdate = now
 

@@ -1,8 +1,8 @@
-from __future__ import print_function, division
-
-import time, sys, threading, traceback, functools
-
-from pyqtgraph import ptime
+import functools
+import sys
+import threading
+import time
+import traceback
 
 from acq4.util import Qt
 
@@ -26,7 +26,7 @@ class Future(Qt.QObject):
     def __init__(self):
         Qt.QObject.__init__(self)
         
-        self.startTime = ptime.time()
+        self.startTime = time.perf_counter()
 
         self._isDone = False
         self._wasInterrupted = False
@@ -120,9 +120,9 @@ class Future(Qt.QObject):
         If a timeout is specified and the task takes too long, then raise Future.Timeout.
         If the task ends incomplete for another reason, then raise RuntimeError.
         """
-        start = ptime.time()
+        start = time.perf_counter()
         while True:
-            if (timeout is not None) and (ptime.time() > start + timeout):
+            if (timeout is not None) and (time.perf_counter() > start + timeout):
                 raise self.Timeout("Timeout waiting for task to complete.")
                 
             if self.isDone():
@@ -157,9 +157,9 @@ class Future(Qt.QObject):
         if delay == 0 and self._stopRequested:
             raise self.StopRequested()
 
-        stop = ptime.time() + delay
+        stop = time.perf_counter() + delay
         while True:
-            now = ptime.time()
+            now = time.perf_counter()
             if now > stop:
                 return
             

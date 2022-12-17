@@ -1,8 +1,7 @@
-from __future__ import print_function
-
 import numpy as np
 import scipy.optimize
 import scipy.stats
+import time
 from six.moves import range
 from six.moves import zip
 
@@ -410,7 +409,7 @@ class AutomatedStageCalibration(object):
             if self._frame_delay is None:
                 # stage has stopped; ignore 2 more frames to be sure
                 # we get the right image.
-                self._frame_delay = pg.ptime.time() + 1.0 / frame.info()["fps"]
+                self._frame_delay = time.perf_counter() + 1.0 / frame.info()["fps"]
             elif self._frame_delay < frame.info()["time"]:
                 # now we are ready to keep this frame.
                 self._frame_delay = None

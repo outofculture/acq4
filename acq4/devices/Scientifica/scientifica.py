@@ -1,13 +1,12 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function
-import time
 import numpy as np
-from acq4.util import Qt
-from ..Stage import Stage, MoveFuture, StageInterface
+import time
+
 from acq4.drivers.Scientifica import Scientifica as ScientificaDriver
+from acq4.util import Qt
 from acq4.util.Mutex import Mutex
 from acq4.util.Thread import Thread
-from pyqtgraph import debug, ptime, SpinBox
+from pyqtgraph import debug, SpinBox
+from ..Stage import Stage, MoveFuture, StageInterface
 
 
 class Scientifica(Stage):
@@ -291,7 +290,7 @@ class ScientificaMoveFuture(MoveFuture):
 
     def _stopped(self):
         # Called when the manipulator is stopped, possibly interrupting this move.
-        startTime = ptime.time()
+        startTime = time.perf_counter()
         while True:
             status = self._getStatus()
             if status == 1:
@@ -300,7 +299,7 @@ class ScientificaMoveFuture(MoveFuture):
             elif status == -1:
                 self._errorMsg = "Move was interrupted before completion."
                 return
-            elif status == 0 and ptime.time() < startTime + 0.15:
+            elif status == 0 and time.perf_counter() < startTime + 0.15:
                 # allow 150ms to stop
                 continue
             elif status == 0:

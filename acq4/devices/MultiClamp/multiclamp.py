@@ -10,7 +10,7 @@ from acq4.Manager import logMsg
 from acq4.devices.PatchClamp import PatchClamp
 from pyqtgraph import multiprocess
 from acq4.util.Mutex import Mutex
-from pyqtgraph.metaarray import MetaArray, axis
+from MetaArray import MetaArray, axis
 from .DeviceGui import MCDeviceGui
 from .taskGUI import MultiClampTaskGui
 from ..Device import DeviceTask

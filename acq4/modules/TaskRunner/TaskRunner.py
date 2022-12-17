@@ -1,23 +1,18 @@
-# -*- coding: utf-8 -*-
-from __future__ import division, print_function
+from collections import OrderedDict
 
 import gc
+import numpy as np
 import os
+import six
 import sys
 import time
-from collections import OrderedDict
-from functools import reduce
-
-import numpy as np
-import pyqtgraph as pg
-import pyqtgraph.configfile as configfile
-import six
 from six.moves import map
 from six.moves import range
 from six.moves import reduce
 
 import acq4.util.DirTreeWidget as DirTreeWidget
-import acq4.util.ptime as ptime
+import pyqtgraph as pg
+import pyqtgraph.configfile as configfile
 from acq4.Manager import getManager
 from acq4.util import Qt
 from acq4.util.HelpfulException import HelpfulException
@@ -553,7 +548,7 @@ class TaskRunner(Module):
         if self._reduceMemoryUsage:
             gc.collect()
 
-        self.lastProtoTime = ptime.time()
+        self.lastProtoTime = time.perf_counter()
         ## Disable all start buttons
         self.setStartBtnsEnable(False)
 
@@ -648,7 +643,7 @@ class TaskRunner(Module):
             # print params, linkedParams
             ## Generate the complete array of command structures. This can take a long time, so we start a progress dialog.
             with pg.ProgressDialog("Generating task commands..", 0, pLen) as progressDlg:
-                self.lastQtProcessTime = ptime.time()
+                self.lastQtProcessTime = time.perf_counter()
                 prot = runSequence(lambda p: self.generateTask(dh, p, progressDlg), paramInds, list(paramInds.keys()),
                                    linkedParams=linkedParams)
             if dh is not None:
@@ -717,7 +712,7 @@ class TaskRunner(Module):
         if progressDlg is not None:
             progressDlg.setValue(progressDlg.value() + 1)
             ## only do UI updates every 1 sec.
-            now = ptime.time()
+            now = time.perf_counter()
             if now - self.lastQtProcessTime > 1.0:
                 self.lastQtProcessTime = now
                 Qt.QApplication.processEvents()
@@ -825,7 +820,7 @@ class TaskRunner(Module):
         ## If this is a single-mode task and looping is turned on, schedule the next run
         if self.loopEnabled:
             ct = self.protoStateGroup.state()['loopCycleTime']
-            t = max(0, ct - (ptime.time() - self.lastProtoTime))
+            t = max(0, ct - (time.perf_counter() - self.lastProtoTime))
             Qt.QTimer.singleShot(int(t * 1000.), self.loop)
         prof.finish()
 
@@ -1031,7 +1026,7 @@ class TaskThread(Thread):
             gc.collect()
 
         prof = Profiler("TaskRunner.TaskThread.runOnce", disabled=True, delayed=False)
-        startTime = ptime.time()
+        startTime = time.perf_counter()
         if params is None:
             params = {}
 
@@ -1043,7 +1038,7 @@ class TaskThread(Thread):
         prof.mark('select command')
 
         ## Wait before starting if we've already run too recently
-        while (self.lastRunTime is not None) and (ptime.time() < self.lastRunTime + cmd['protocol']['cycleTime']):
+        while (self.lastRunTime is not None) and (time.perf_counter() < self.lastRunTime + cmd['protocol']['cycleTime']):
             with self.lock:
                 if self.abortThread or self.stopThread:
                     # print "Task run aborted by user"
@@ -1079,7 +1074,7 @@ class TaskThread(Thread):
         task = self.dm.createTask(cmd)
         prof.mark('create task')
 
-        self.lastRunTime = ptime.time()
+        self.lastRunTime = time.perf_counter()
 
         try:
             with self.lock:

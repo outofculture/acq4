@@ -1,23 +1,19 @@
-from __future__ import print_function
-from acq4.util import Qt
-#import configfile
-from acq4.Manager import getManager, logExc, logMsg
-from acq4.util.Mutex import Mutex
+import numpy as np
+import time
+from scipy import stats
+from six.moves import range
+
+from MetaArray import MetaArray
+from acq4.Manager import getManager, logMsg
 from acq4.devices.DAQGeneric import DAQGeneric, DAQGenericTask
+from acq4.devices.NiDAQ.nidaq import NiDAQ
 from acq4.devices.OptomechDevice import OptomechDevice
+from acq4.util import Qt
+from acq4.util.HelpfulException import HelpfulException
+from acq4.util.Mutex import Mutex
+from pyqtgraph.functions import siFormat
 from .LaserDevGui import LaserDevGui
 from .LaserTaskGui import LaserTaskGui
-import os
-import time
-import numpy as np
-from scipy import stats
-from pyqtgraph.functions import siFormat
-from acq4.util.HelpfulException import HelpfulException
-import pyqtgraph as pg
-import pyqtgraph.metaarray as metaarray
-from acq4.devices.NiDAQ.nidaq import NiDAQ
-import acq4.util.ptime as ptime
-from six.moves import range
 
 
 class Laser(DAQGeneric, OptomechDevice):
@@ -455,7 +451,7 @@ class Laser(DAQGeneric, OptomechDevice):
         determined by the powerUpdateInterval config parameter). Use forceUpdate=True to ignore any
         cached values.
         """
-        now = ptime.time()
+        now = time.perf_counter()
         needUpdate = (
             forceUpdate is True or 
             self.params['currentPower'] is None or 
@@ -465,7 +461,7 @@ class Laser(DAQGeneric, OptomechDevice):
 
         if needUpdate:
             self.params['currentPower'] = self._measurePower()
-            self._lastPowerMeasureTime = ptime.time()
+            self._lastPowerMeasureTime = time.perf_counter()
         return self.params['currentPower']
 
     def _measurePower(self):
@@ -874,7 +870,7 @@ class LaserTask(DAQGenericTask):
         
         result._info[-1]['Laser'] = info
         
-        result = metaarray.MetaArray(arr, info=result._info)
+        result = MetaArray(arr, info=result._info)
         self.dev.lastResult = result
        
         return result

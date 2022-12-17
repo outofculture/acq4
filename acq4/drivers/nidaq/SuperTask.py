@@ -1,19 +1,14 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function
-
-import time
 from collections import OrderedDict
 
 import numpy as np
 import six
+import time
+from six.moves import map
 
 try:
     from PyDAQmx import DAQException
 except (NotImplementedError, ImportError):
     DAQException = Exception
-from six.moves import map
-
-import acq4.util.ptime as ptime  # platform-independent precision timing
 
 
 class SuperTask:
@@ -260,7 +255,7 @@ class SuperTask:
             # print "starting task", k
             self.tasks[k].start()
         # self.startTime = time.clock()
-        self.startTime = ptime.time()
+        self.startTime = time.perf_counter()
         # print "start time:", self.startTime
         self.tasks[keys[-1]].start()
         # print "starting clock task:", keys[-1]

@@ -31,7 +31,7 @@ from . import __version__
 from . import devices, modules
 from .Interfaces import InterfaceDirectory
 from .devices.Device import Device, DeviceTask
-from .util import DataManager, ptime, Qt
+from .util import DataManager, Qt
 from .util.HelpfulException import HelpfulException
 from .util.debug import logExc, logMsg, createLogWindow
 
@@ -346,8 +346,8 @@ class Manager(Qt.QObject):
                             "'defaultCompression' option must be one of: None, 'gzip', 'szip', 'lzf', ('gzip', 0-9), or ('szip', opts). Got: '%s'" % comp)
 
                     print("=== Setting default HDF5 compression: %s ===" % comp)
-                    import pyqtgraph.metaarray as ma
-                    ma.MetaArray.defaultCompression = comp
+                    from MetaArray import MetaArray
+                    MetaArray.defaultCompression = comp
 
                 elif key == 'folderTypes':
                     self._folderTypes = val
@@ -1062,7 +1062,7 @@ class Task:
                         print("Error starting device '%s'; aborting task." % devName)
                         raise
                     prof.mark('start %s' % devName)
-                self.startTime = ptime.time()
+                self.startTime = time.perf_counter()
 
                 # print "  %d Task started" % self.id
 
@@ -1074,16 +1074,16 @@ class Task:
                 ## Wait until all tasks are done
                 # print "Waiting for all tasks to finish.."
 
-                lastProcess = ptime.time()
+                lastProcess = time.perf_counter()
                 isGuiThread = Qt.QThread.currentThread() == Qt.QCoreApplication.instance().thread()
                 # print "isGuiThread:", isGuiThread
                 while not self.isDone():
-                    now = ptime.time()
+                    now = time.perf_counter()
                     elapsed = now - self.startTime
                     if isGuiThread:
                         if processEvents and now - lastProcess > 20e-3:  ## only process Qt events every 20ms
                             Qt.QApplication.processEvents()
-                            lastProcess = ptime.time()
+                            lastProcess = time.perf_counter()
 
                     if elapsed < self.cfg[
                         'duration'] - 10e-3:  ## If the task duration has not elapsed yet, only wake up every 10ms, and attempt to wake up 5ms before the end
@@ -1123,7 +1123,7 @@ class Task:
                 # Set timeout=None to disable the check.
                 timeout = self.cfg.get('timeout', self.cfg['duration'] + 10.0)
 
-                now = ptime.time()
+                now = time.perf_counter()
                 elapsed = now - self.startTime
                 if timeout is not None and elapsed > timeout:
                     self.stop(abort=True)
@@ -1136,7 +1136,7 @@ class Task:
 
             # print "Manager.Task.isDone"
             if not self.abortRequested:
-                t = ptime.time()
+                t = time.perf_counter()
                 if self.startTime is None or t - self.startTime < self.cfg['duration']:
                     # print "  not done yet"
                     return False
@@ -1155,7 +1155,7 @@ class Task:
                 # print "Task %s not finished" % t
                 return False
         if self.stopTime is None:
-            self.stopTime = ptime.time()
+            self.stopTime = time.perf_counter()
         return True
 
     def duration(self):
@@ -1170,7 +1170,7 @@ class Task:
         if self.startTime is None:
             return None
         if self.stopTime is None:
-            return ptime.time() - self.startTime
+            return time.perf_counter() - self.startTime
         return self.stopTime - self.startTime
 
     def stop(self, abort=False):
@@ -1220,7 +1220,7 @@ class Task:
                 ## Regardless of any other problems, at least make sure we 
                 ## release hardware for future use
                 if self.stopTime is None:
-                    self.stopTime = ptime.time()
+                    self.stopTime = time.perf_counter()
 
                 self.releaseDevices()
                 prof.mark("release all")

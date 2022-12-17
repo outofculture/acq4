@@ -1,27 +1,22 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function
-from __future__ import with_statement
-
-import os
-import sys
-import time
-
 import numpy as np
+import os
 import scipy.optimize
 import six
+import sys
+import time
+from six.moves import range
 
 import acq4.Manager as Manager
-import acq4.util.ptime as ptime
-from pyqtgraph import PlotWidget, mkPen
-from pyqtgraph import WidgetGroup, MetaArray
-from pyqtgraph import siFormat
-from pyqtgraph.debug import Profiler
+from MetaArray import MetaArray
 from acq4.util import Qt
 from acq4.util.Mutex import Mutex
 from acq4.util.StatusBar import StatusBar
 from acq4.util.Thread import Thread
 from acq4.util.debug import printExc
-from six.moves import range
+from pyqtgraph import PlotWidget, mkPen
+from pyqtgraph import WidgetGroup
+from pyqtgraph import siFormat
+from pyqtgraph.debug import Profiler
 
 Ui_Form = Qt.importTemplate('.PatchTemplate')
 
@@ -445,7 +440,7 @@ class PatchThread(Thread):
                 except:
                     printExc("Error running/analyzing patch protocol")
                 
-                lastTime = ptime.time()-params['recordTime'] ## This is not a proper 'cycle time', but instead enforces a minimum interval between cycles (but this can be very important for performance)
+                lastTime = time.perf_counter()-params['recordTime'] ## This is not a proper 'cycle time', but instead enforces a minimum interval between cycles (but this can be very important for performance)
                 
                 ## sleep until it is time for the next run
                 c = 0
@@ -457,7 +452,7 @@ class PatchThread(Thread):
                             if self.stopThread:
                                 stop = True
                                 break
-                    now = ptime.time()
+                    now = time.perf_counter()
                     if now >= (lastTime+params['cycleTime']):
                         break
                     

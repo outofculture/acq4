@@ -1,25 +1,21 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function
-
 import os.path
-import time
-import weakref
 from collections import OrderedDict
 
 import numpy as np
-import pyqtgraph as pg
-import pyqtgraph.dockarea as dockarea
-from pyqtgraph import ptime
-from pyqtgraph.graphicsItems.ROI import RulerROI
-from pyqtgraph.metaarray import MetaArray
+import time
+import weakref
 from six.moves import range
 
 import acq4.Manager as Manager
+import pyqtgraph as pg
+import pyqtgraph.dockarea as dockarea
+from MetaArray import MetaArray
 from acq4.util import Qt
 from acq4.util.Mutex import Mutex
 from acq4.util.StatusBar import StatusBar
 from acq4.util.Thread import Thread
 from acq4.util.debug import Profiler
+from pyqtgraph.graphicsItems.ROI import RulerROI
 
 SequencerTemplate = Qt.importTemplate(".sequencerTemplate")
 
@@ -905,7 +901,7 @@ class SequencerThread(Thread):
                         return
                     wait = 0.1
                 else:
-                    now = ptime.time()
+                    now = time.perf_counter()
                     wait = until - now
                     if wait <= 0:
                         return

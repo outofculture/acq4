@@ -1,15 +1,16 @@
-from __future__ import print_function
-import threading
-import sys, time
+from collections import deque
+
 import numpy as np
 import scipy.stats
+import sys
+import threading
+import time
 from six.moves import range, queue
-from pyqtgraph import ptime, disconnect
 
 from acq4 import getManager
-from acq4.util.future import Future
-from collections import deque
 from acq4.util.debug import printExc
+from acq4.util.future import Future
+from pyqtgraph import disconnect
 
 
 class PatchPipetteState(Future):
@@ -234,7 +235,7 @@ class PatchPipetteWholeCellState(PatchPipetteState):
     def run(self):
         config = self.config
         patchrec = self.dev.patchRecord()
-        patchrec['wholeCellStartTime'] = ptime.time()
+        patchrec['wholeCellStartTime'] = time.perf_counter()
         patchrec['wholeCellPosition'] = tuple(self.dev.pipetteDevice.globalPosition())
 
         # TODO: Option to switch to I=0 for a few seconds to get initial RMP decay
@@ -246,7 +247,7 @@ class PatchPipetteWholeCellState(PatchPipetteState):
 
     def cleanup(self):
         patchrec = self.dev.patchRecord()
-        patchrec['wholeCellStopTime'] = ptime.time()
+        patchrec['wholeCellStopTime'] = time.perf_counter()
         PatchPipetteState.cleanup(self)
 
 
@@ -463,7 +464,7 @@ class PatchPipetteCellDetectState(PatchPipetteState):
             return self._do_cell_detect()
 
     def _do_cell_detect(self):
-        startTime = ptime.time()
+        startTime = time.perf_counter()
         config = self.config
         dev = self.dev
         self.monitorTestPulse()
@@ -478,7 +479,7 @@ class PatchPipetteCellDetectState(PatchPipetteState):
         patchrec['cellDetectInitialTarget'] = tuple(dev.pipetteDevice.targetPosition())
 
         while True:
-            if config['cellDetectTimeout'] is not None and ptime.time() - startTime > config['cellDetectTimeout']:
+            if config['cellDetectTimeout'] is not None and time.perf_counter() - startTime > config['cellDetectTimeout']:
                 self._taskDone(interrupted=True, error="Timed out waiting for cell detect.")
                 return config['fallbackState']
 
@@ -533,7 +534,7 @@ class PatchPipetteCellDetectState(PatchPipetteState):
                     if self.stepCount >= len(self.advanceSteps):
                         return self._transition_to_fallback(patchrec)
                     # make sure we obey advanceStepInterval
-                    now = ptime.time()
+                    now = time.perf_counter()
                     if now - self.lastMove < config['advanceStepInterval']:
                         continue
                     self.lastMove = now
@@ -736,7 +737,7 @@ class PatchPipetteSealState(PatchPipetteState):
         patchrec = dev.patchRecord()
         patchrec['resistanceBeforeSeal'] = initialResistance
         patchrec['capacitanceBeforeSeal'] = initialTP.analysis()['capacitance']
-        startTime = ptime.time()
+        startTime = time.perf_counter()
         pressure = config['startingPressure']
 
         mode = config['pressureMode']
@@ -797,7 +798,7 @@ class PatchPipetteSealState(PatchPipetteState):
                 return 'cell attached'
             
             if mode == 'auto':
-                dt = ptime.time() - startTime
+                dt = time.perf_counter() - startTime
                 if dt < config['delayBeforePressure']:
                     # delay at atmospheric pressure before starting suction
                     continue
@@ -874,10 +875,10 @@ class PatchPipetteCellAttachedState(PatchPipetteState):
         self.monitorTestPulse()
         patchrec = self.dev.patchRecord()
         config = self.config
-        startTime = ptime.time()
+        startTime = time.perf_counter()
         delay = config['autoBreakInDelay']
         while True:
-            if delay is not None and ptime.time() - startTime > delay:
+            if delay is not None and time.perf_counter() - startTime > delay:
                 return 'break in'
 
             self._checkStop()
@@ -948,7 +949,7 @@ class PatchPipetteBreakInState(PatchPipetteState):
         patchrec = self.dev.patchRecord()
         self.monitorTestPulse()
         config = self.config
-        lastPulse = ptime.time()
+        lastPulse = time.perf_counter()
         attempt = 0
 
         while True:
@@ -960,7 +961,7 @@ class PatchPipetteBreakInState(PatchPipetteState):
             elif status is False:
                 return
 
-            if ptime.time() - lastPulse > config['pulseInterval']:
+            if time.perf_counter() - lastPulse > config['pulseInterval']:
                 nPulses = config['nPulses'][attempt]
                 pdur = config['pulseDurations'][attempt]
                 press = config['pulsePressures'][attempt]
@@ -974,7 +975,7 @@ class PatchPipetteBreakInState(PatchPipetteState):
                 elif status is False:
                     patchrec['breakinSuccessful'] = False
                     return config['fallbackState']
-                lastPulse = ptime.time()
+                lastPulse = time.perf_counter()
                 attempt += 1
         
             if attempt >= len(config['nPulses']):
@@ -1085,10 +1086,10 @@ class PatchPipetteResealState(PatchPipetteState):
 
         self.retractionFuture = dev.pipetteDevice.retractFromSurface(speed=config['retractionSpeed'])
 
-        startTime = ptime.time()
+        startTime = time.perf_counter()
         lastTime = startTime
         while True:
-            now = ptime.time()
+            now = time.perf_counter()
             dt = now - lastTime
             totalDt = now - startTime
             lastTime = now
@@ -1155,7 +1156,7 @@ class PatchPipetteBlowoutState(PatchPipetteState):
         self.dev.pressureDevice.setPressure(source='atmosphere', pressure=0)
 
         # wait until we have a test pulse that ran after blowout was finished.
-        start = ptime.time()
+        start = time.perf_counter()
         while True:
             self._checkStop()
             tps = self.getTestPulses(timeout=0.2)

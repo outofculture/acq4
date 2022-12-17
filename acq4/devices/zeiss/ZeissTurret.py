@@ -1,10 +1,6 @@
-from __future__ import print_function
-
 import time
 from typing import Union
 from warnings import warn
-
-from pyqtgraph import ptime
 
 from acq4.devices.FilterWheel.filterwheel import FilterWheel, FilterWheelFuture, FilterWheelDevGui
 from acq4.drivers.zeiss import ZeissMtbSdk
@@ -84,10 +80,10 @@ class ZeissFilterWheelFuture(FilterWheelFuture):
 
     def _atTarget(self):
         # sometimes we transiently return 0 at the end of a move; just wait a little longer
-        start = ptime.time()
+        start = time.perf_counter()
         while True:
             pos = self.dev._getPosition()
-            if pos != 0 or ptime.time() - start > 1.0:
+            if pos != 0 or time.perf_counter() - start > 1.0:
                 break
 
         return pos == self.position

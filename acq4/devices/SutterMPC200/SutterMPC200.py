@@ -1,12 +1,10 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function
 import time
 from acq4.util import Qt
 from ..Stage import Stage, MoveFuture
 from acq4.drivers.SutterMPC200 import SutterMPC200 as MPC200_Driver
 from acq4.util.Mutex import Mutex
 from acq4.util.Thread import Thread
-from pyqtgraph import debug, ptime
+from pyqtgraph import debug
 from six.moves import range
 
 
@@ -241,7 +239,7 @@ class MonitorThread(Thread):
                     try:
                         with self.dev.dev.lock:
                             # record the move starting time only after locking the device
-                            start = ptime.time()
+                            start = time.perf_counter()
                             with self.lock:
                                 self._moveStatus[mid] = (start, False)
                             pos = self.dev.dev.moveTo(drive, pos, speed)
@@ -301,7 +299,7 @@ class MPC200MoveFuture(MoveFuture):
         """
         if self.isDone():
             return 100
-        dt = ptime.time() - self._getStatus()[0]
+        dt = time.perf_counter() - self._getStatus()[0]
         if self._expectedDuration == 0:
             return 99
         return max(min(100 * dt / self._expectedDuration, 99), 0)

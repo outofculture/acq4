@@ -1,6 +1,6 @@
-from __future__ import print_function
-import serial, struct, time, collections
 import numpy as np
+import struct
+import time
 from six.moves import range
 
 try:
@@ -341,14 +341,13 @@ def measureSpeedTable(dev, drive, dist=3e-3):
     Warning: this function moves the stage to (0, 0, 0); do not 
     run this function unless you know it is safe for your setup!
     """
-    from pyqtgraph import ptime
     v = []
     for i in range(16):
         pos = (dist, 0, 0)
         dev.moveTo(drive, [0,0,0], 'fast')
-        start = ptime.time()
+        start = time.perf_counter()
         dev.moveTo(drive, pos, i, timeout=100)
-        stop = ptime.time()
+        stop = time.perf_counter()
         dt = stop - start
         v.append(dist / dt)
         print('%d: %0.4g,  # %0.2g m / %0.2g s' % (i, v[-1], dist, dt))

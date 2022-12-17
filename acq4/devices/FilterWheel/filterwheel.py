@@ -9,7 +9,6 @@ import acq4.util.debug as debug
 from acq4.devices.Device import TaskGui, Device, DeviceTask
 from acq4.devices.OptomechDevice import OptomechDevice
 from acq4.util import Qt
-from acq4.util import ptime
 from acq4.util.Mutex import Mutex
 from acq4.util.Thread import Thread
 
@@ -280,8 +279,8 @@ class FilterWheelFuture(object):
 
         If the move did not complete, raise an exception.
         """
-        start = ptime.time()
-        while (timeout is None) or (ptime.time() < start + timeout):
+        start = time.perf_counter()
+        while (timeout is None) or (time.perf_counter() < start + timeout):
             if self.isDone():
                 break
             if updates is True:

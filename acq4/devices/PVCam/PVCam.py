@@ -1,14 +1,9 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function
-from __future__ import with_statement
-
 import time
+from six.moves import range
 
-import acq4.util.ptime as ptime
 from acq4.devices.Camera import Camera, CameraTask
 from acq4.drivers.pvcam import PVCam as PVCDriver
 from acq4.util.Mutex import Mutex
-from six.moves import range
 
 
 class PVCam(Camera):
@@ -45,7 +40,7 @@ class PVCam(Camera):
             self.lastIndex = None
             #print "  not running already; start camera"
             Camera.start(self, block)  ## Start the acquisition thread
-            self.startTime = ptime.time()
+            self.startTime = time.perf_counter()
             
         ## pvcams can take a long time 
         if block:
@@ -56,7 +51,7 @@ class PVCam(Camera):
             else:
                 waitTime = 0
             
-            sleepTime = (self.startTime + waitTime) - ptime.time()
+            sleepTime = (self.startTime + waitTime) - time.perf_counter()
             if sleepTime > 0:
                 #print "  sleep for", sleepTime
                 time.sleep(sleepTime)
@@ -107,7 +102,7 @@ class PVCam(Camera):
         
         with self.camLock:
             index = self.cam.lastFrame()
-        now = ptime.time()
+        now = time.perf_counter()
         if self.lastFrameTime is None:
             self.lastFrameTime = now
             
