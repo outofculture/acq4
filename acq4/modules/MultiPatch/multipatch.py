@@ -573,6 +573,8 @@ class MultiPatchWindow(Qt.QWidget):
         self.eventHistory = []
         for pip in self.selectedPipettes():
             pip.resetTestPulseHistory()
+            self.recordEvent(pip.initialEvent())
+            # TODO record this whenever a new pipette is selected, too
 
     def writeRecords(self, recs):
         if self.storageFile is None:

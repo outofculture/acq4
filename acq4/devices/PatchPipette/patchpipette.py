@@ -400,6 +400,20 @@ class PatchPipette(Device):
         self.setState('out')
         return self.pipetteDevice.goHome(speed, **kwds)
 
+    def initialEvent(self):
+        state = "" if self.getState() is None else self.getState().stateName
+        target = None if self.pipetteDevice.target is None else tuple(self.pipetteDevice.target)
+        return {
+            "device": self.name(),
+            "event_time": ptime.time(),
+            "event": "init",
+            "state": state,
+            "position": self.pipetteDevice.globalPosition(),
+            "target": target,
+            "yaw": self.pipetteDevice.yawRadians(),
+            "pitch": self.pipetteDevice.pitchRadians(),
+        }
+
     def _pipetteMoveStarted(self, pip, pos):
         self.sigMoveStarted.emit(self)
         self.emitNewEvent('move_start', {'position': tuple(pos)})
