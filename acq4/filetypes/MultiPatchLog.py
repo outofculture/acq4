@@ -360,6 +360,8 @@ class PipettePathWidget(object):
         plot.addItem(self._pastPlot)
         self._arrow = pg.ArrowItem(pen=pg.mkPen('w', width=2))
         self._arrow.setPos(self._path[0, 1], self._path[0, 2])
+        # TODO what is this angle? save pipette transform somewhere, or just the angle.
+        # self._arrow.setStyle(angle=180 - angle)
         plot.addItem(self._arrow)
         if len(states) > 0:
             label_text = f"{name}: {states[0][1]}\n {states[0][2]}"

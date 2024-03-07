@@ -413,7 +413,7 @@ class Pipette(Device, OptomechDevice):
         if depth < appDepth:
             return self.advance(appDepth, speed=speed)
 
-    def globalPosition(self):
+    def globalPosition(self) -> list:
         """Return the position of the electrode tip in global coordinates.
 
         Note: the position in local coordinates is always [0, 0, 0].

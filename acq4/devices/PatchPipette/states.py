@@ -1272,6 +1272,8 @@ class ResealState(PatchPipetteState):
     }
 
     def __init__(self, *args, **kwds):
+        # TODO maybe too much sucking in?
+        # TODO getting rid of tip material might need to splash in and out of fluid
         PatchPipetteState.__init__(self, *args, **kwds)
         self._moveFuture = None
         self._pressureFuture = None

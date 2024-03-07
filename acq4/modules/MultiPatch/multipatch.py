@@ -48,6 +48,7 @@ class MultiPatchWindow(Qt.QWidget):
         self._calibrateStagePositions = []
         self._setTargetPips = []
         self._profileEditor = None
+        self.eventHistory = []
 
         Qt.QWidget.__init__(self)
         self.module = module
@@ -79,7 +80,7 @@ class MultiPatchWindow(Qt.QWidget):
             pip.sigMoveFinished.connect(self.pipetteMoveFinished)
             if isinstance(pip, PatchPipette):
                 pip.sigNewEvent.connect(self.pipetteEvent)
-                pip.sigTestPulseEnabled.connect(self.pipetteTestPulseEnabled)
+                # pip.sigTestPulseEnabled.connect(self.pipetteTestPulseEnabled)
             ctrl = PipetteControl(pip, self)
             if i > 0:
                 ctrl.hideHeader()
@@ -96,7 +97,6 @@ class MultiPatchWindow(Qt.QWidget):
             ctrl.sigPlotModesChanged.connect(self.setPlotModes)
 
             self.pipCtrls.append(ctrl)
-
 
         # load profile configurations from old location
         for name, profile in module.config.get('patchProfiles', {}).items():
@@ -369,8 +369,8 @@ class MultiPatchWindow(Qt.QWidget):
                 pip = pip.pipetteDevice
             pip.hideMarkers(hide)
 
-    def pipetteTestPulseEnabled(self, pip, enabled):
-        self.updateSelectedPipControls()
+    # def pipetteTestPulseEnabled(self, pip, enabled):
+    #     self.updateSelectedPipControls()
 
     # def testPulseClicked(self):
     #     for pip in self.selectedPipettes():
@@ -394,7 +394,6 @@ class MultiPatchWindow(Qt.QWidget):
 
     def selectionChanged(self):
         pips = self.selectedPipettes()
-        solo = len(pips) == 1
         none = len(pips) == 0
 
         if none:
@@ -403,19 +402,19 @@ class MultiPatchWindow(Qt.QWidget):
             self.ui.selectedGroupBox.setTitle("Selected:")
             self.ui.selectedGroupBox.setEnabled(False)
         else:
-            if solo:
-                self.ui.selectedGroupBox.setTitle("Selected: %s" % (pips[0].name()))
+            if len(pips) == 1:
+                self.ui.selectedGroupBox.setTitle(f"Selected: {pips[0].name()}")
             elif len(pips) > 1:
                 self.ui.selectedGroupBox.setTitle("Selected: multiple")
             self.ui.selectedGroupBox.setEnabled(True)
-            self.updateSelectedPipControls()
-        
+            # self.updateSelectedPipControls()
+
         self.updateXKeysBacklight()
 
-    def updateSelectedPipControls(self):
-        pips = self.selectedPipettes()
-        # tp = any([pip.testPulseEnabled() for pip in pips])
-        # self.ui.testPulseBtn.setChecked(tp)
+    # def updateSelectedPipControls(self):
+    #     pips = self.selectedPipettes()
+    #     # tp = any([pip.testPulseEnabled() for pip in pips])
+    #     # self.ui.testPulseBtn.setChecked(tp)
 
     def selectedPipettes(self) -> List[PatchPipette]:
         sel = []

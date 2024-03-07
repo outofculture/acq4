@@ -270,7 +270,7 @@ class PatchPipette(Device):
         }
         self.writeConfigFile(state, 'last_state')
 
-    def getState(self):
+    def getState(self) -> "Optional[PatchPipetteState]":
         return self._stateManager.getState()
 
     def breakIn(self):
