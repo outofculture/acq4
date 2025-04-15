@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from threading import Lock
-
-from typing import Any
-
 import contextlib
+from threading import Lock
+from typing import Any, Iterable
+
 import numpy as np
 
 import pyqtgraph as pg
@@ -13,6 +12,7 @@ from acq4.util import ptime
 from acq4.util.functions import plottable_booleans
 from acq4.util.future import future_wrap
 from acq4.util.imaging.sequencer import run_image_sequence
+from pyqtgraph.units import µm
 from ._base import PatchPipetteState, SteadyStateAnalysisBase
 
 
@@ -20,7 +20,7 @@ class CellDetectAnalysis(SteadyStateAnalysisBase):
     """Class to analyze test pulses and determine cell detection behavior."""
 
     @classmethod
-    def plots_for_data(cls, data: iter[np.void], *args, **kwargs) -> dict[str, iter[dict[str, Any]]]:
+    def plots_for_data(cls, data: Iterable[np.ndarray], *args, **kwargs) -> dict[str, Iterable[dict[str, Any]]]:
         plots = {'Ω': [], '': []}
         names = False
         for d in data:
@@ -207,7 +207,8 @@ class CellDetectState(PatchPipetteState):
     preTargetWiggleSpeed : float
         Speed (m/s) to move during the wiggle (default 5 µm/s)
     baselineResistanceTau : float
-        Time constant (s) for rolling average of pipette resistance (default 20 s) from which to calculate cell detection
+        Time constant (s) for rolling average of pipette resistance (default 20 s) from which to calculate cell
+        detection
     fastDetectionThreshold : float
         Threshold for fast change in pipette resistance (Ohm) to trigger cell detection (default 1 MOhm)
     slowDetectionThreshold : float
@@ -244,6 +245,10 @@ class CellDetectState(PatchPipetteState):
         'maxAdvanceDepthBelowSurface': {'default': None, 'type': 'float', 'optional': True, 'suffix': 'm'},
         'aboveSurfaceSpeed': {'default': 20e-6, 'type': 'float', 'suffix': 'm/s'},
         'belowSurfaceSpeed': {'default': 5e-6, 'type': 'float', 'suffix': 'm/s'},
+        'aboveSurfacePressure': {'default': 1500, 'type': 'float', 'suffix': 'Pa'},
+        'belowSurfacePressureMin': {'default': 1500, 'type': 'float', 'suffix': 'Pa'},
+        'belowSurfacePressureMax': {'default': 5000, 'type': 'float', 'suffix': 'Pa'},
+        'belowSurfacePressureChange': {'default': 50 / µm, 'type': 'float', 'suffix': 'Pa/m'},
         'detectionSpeed': {'default': 2e-6, 'type': 'float', 'suffix': 'm/s'},
         'takeACellfie': {'default': True, 'type': 'bool'},
         'cellfieHeight': {'default': 30e-6, 'type': 'float', 'suffix': 'm'},
@@ -324,6 +329,7 @@ class CellDetectState(PatchPipetteState):
                 return self._transition_to_seal(speed)
             self.checkStop()
             self.processAtLeastOneTestPulse()
+            self.adjustPressureForDepth()
             if self._analysis.tip_is_broken():
                 self._taskDone(interrupted=True, error="Pipette broken")
                 self.dev.patchRecord()['detectedCell'] = False
@@ -358,6 +364,15 @@ class CellDetectState(PatchPipetteState):
                     self.singleStep()
         self._taskDone(interrupted=True, error="Timed out waiting for cell detect.")
         return config['fallbackState']
+
+    def adjustPressureForDepth(self):
+        depth = self.depthBelowSurface()
+        if depth < 0:  # above surface
+            pressure = self.config["aboveSurfacePressure"]
+        else:
+            pressure = self.config["belowSurfacePressureMin"] + depth * self.config["belowSurfacePressureChange"]
+            pressure = min(pressure, self.config["belowSurfacePressureMax"])
+        self.dev.pressureDevice.setPressure("regulator", pressure)
 
     def avoidObstacle(self, already_retracted=False):
         self.setState("avoiding obstacle" + (" (recursively)" if already_retracted else ""))
@@ -456,10 +471,13 @@ class CellDetectState(PatchPipetteState):
         return False
 
     def aboveSurface(self, pos=None):
+        return self.depthBelowSurface(pos) < 0
+
+    def depthBelowSurface(self, pos=None):
         if pos is None:
             pos = self.dev.pipetteDevice.globalPosition()
         surface = self.dev.pipetteDevice.scopeDevice().getSurfaceDepth()
-        return pos[2] > surface
+        return surface - pos[2]
 
     def closeEnoughToTargetToDetectCell(self, pos=None):
         return self._distanceToTarget(pos) < self.config['minDetectionDistance']
@@ -545,20 +563,21 @@ class CellDetectState(PatchPipetteState):
 
     @future_wrap
     def continuousMove(self, _future):
-        """Begin moving pipette continuously along search path.
-        """
+        """Move pipette continuously along search path."""
         self.setState("continuous pipette advance")
+        config = self.config
+        dev = self.dev
         if self.aboveSurface():
-            speed = self.config['aboveSurfaceSpeed']
+            speed = config['aboveSurfaceSpeed']
             surface = self.surfaceIntersectionPosition(self.direction)
-            _future.waitFor(self.dev.pipetteDevice._moveToGlobal(surface, speed=speed), timeout=None)
+            _future.waitFor(dev.pipetteDevice._moveToGlobal(surface, speed=speed), timeout=None)
             self.setState("moved to surface")
         if not self.closeEnoughToTargetToDetectCell():
-            speed = self.config['belowSurfaceSpeed']
+            speed = config['belowSurfaceSpeed']
             midway = self.fastTravelEndpoint()
             _future.waitFor(self.dev.pipetteDevice._moveToGlobal(midway, speed=speed), timeout=None)
             self.setState("moved to detection area")
-        speed = self.config['detectionSpeed']
+        speed = config['detectionSpeed']
         endpoint = self.finalSearchEndpoint()
         if self.config['preTargetWiggle']:
             distance = np.linalg.norm(endpoint - np.array(self.dev.pipetteDevice.globalPosition()))
