@@ -8,6 +8,9 @@ import shutil
 
 from acq4.util.cell_storage import CellStorageManager
 from acq4.util.cell_storage.models import Cell, PatchAttempt
+from acq4.util.cell_storage.serialization import (
+    save_metadata, load_metadata, ensure_dir_exists
+)
 
 
 class TestCellModel:
@@ -239,6 +242,158 @@ class TestPatchAttemptModel:
         repr_str = repr(attempt)
         assert "PatchAttempt" in repr_str
         assert "attempt-uuid-123" in repr_str
+
+
+class TestSerialization:
+    """Test JSON serialization utilities."""
+
+    def test_ensure_dir_exists_creates_directory(self, tmp_path):
+        """Test that ensure_dir_exists creates a directory."""
+        new_dir = tmp_path / "test_dir"
+        assert not os.path.exists(new_dir)
+
+        ensure_dir_exists(str(new_dir))
+
+        assert os.path.exists(new_dir)
+        assert os.path.isdir(new_dir)
+
+    def test_ensure_dir_exists_accepts_existing_directory(self, tmp_path):
+        """Test that ensure_dir_exists works with existing directory."""
+        new_dir = tmp_path / "test_dir"
+        os.makedirs(new_dir)
+
+        # Should not raise an error
+        ensure_dir_exists(str(new_dir))
+
+        assert os.path.exists(new_dir)
+
+    def test_save_metadata_cell(self, tmp_path):
+        """Test saving Cell metadata to JSON."""
+        cell = Cell(
+            uuid="test-cell-123",
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2,
+            notes="Test cell"
+        )
+
+        cell_dir = tmp_path / "cell_123"
+        save_metadata(cell, str(cell_dir))
+
+        # Check that metadata.json was created
+        metadata_file = cell_dir / "metadata.json"
+        assert os.path.exists(metadata_file)
+
+        # Verify content
+        import json
+        with open(metadata_file, 'r') as f:
+            data = json.load(f)
+
+        assert data["uuid"] == "test-cell-123"
+        assert data["global_position"] == {"x": 100.0, "y": 200.0, "z": 50.0}
+        assert data["initial_resistance"] == 5.2
+
+    def test_save_metadata_patch_attempt(self, tmp_path):
+        """Test saving PatchAttempt metadata to JSON."""
+        attempt = PatchAttempt(
+            uuid="attempt-123",
+            cell_id="cell-456",
+            successful_seal=True,
+            tasks_run=["recording1"]
+        )
+
+        attempt_dir = tmp_path / "attempt_123"
+        save_metadata(attempt, str(attempt_dir))
+
+        # Check that metadata.json was created
+        metadata_file = attempt_dir / "metadata.json"
+        assert os.path.exists(metadata_file)
+
+        # Verify content
+        import json
+        with open(metadata_file, 'r') as f:
+            data = json.load(f)
+
+        assert data["uuid"] == "attempt-123"
+        assert data["cell_id"] == "cell-456"
+        assert data["successful_seal"] is True
+        assert data["tasks_run"] == ["recording1"]
+
+    def test_load_metadata_cell(self, tmp_path):
+        """Test loading Cell metadata from JSON."""
+        # First save a cell
+        cell = Cell(
+            uuid="test-cell-123",
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2,
+            notes="Test cell"
+        )
+
+        cell_dir = tmp_path / "cell_123"
+        save_metadata(cell, str(cell_dir))
+
+        # Now load it back
+        loaded_cell = load_metadata(str(cell_dir), Cell)
+
+        assert loaded_cell.uuid == cell.uuid
+        assert loaded_cell.global_position == cell.global_position
+        assert loaded_cell.initial_resistance == cell.initial_resistance
+        assert loaded_cell.notes == cell.notes
+
+    def test_load_metadata_patch_attempt(self, tmp_path):
+        """Test loading PatchAttempt metadata from JSON."""
+        # First save an attempt
+        attempt = PatchAttempt(
+            uuid="attempt-123",
+            cell_id="cell-456",
+            successful_seal=True,
+            tasks_run=["recording1"]
+        )
+
+        attempt_dir = tmp_path / "attempt_123"
+        save_metadata(attempt, str(attempt_dir))
+
+        # Now load it back
+        loaded_attempt = load_metadata(str(attempt_dir), PatchAttempt)
+
+        assert loaded_attempt.uuid == attempt.uuid
+        assert loaded_attempt.cell_id == attempt.cell_id
+        assert loaded_attempt.successful_seal == attempt.successful_seal
+        assert loaded_attempt.tasks_run == attempt.tasks_run
+
+    def test_load_metadata_file_not_found(self, tmp_path):
+        """Test that load_metadata raises error when file doesn't exist."""
+        nonexistent_dir = tmp_path / "nonexistent"
+
+        with pytest.raises(FileNotFoundError):
+            load_metadata(str(nonexistent_dir), Cell)
+
+    def test_load_metadata_invalid_json(self, tmp_path):
+        """Test that load_metadata handles invalid JSON."""
+        invalid_dir = tmp_path / "invalid"
+        os.makedirs(invalid_dir)
+
+        # Write invalid JSON
+        metadata_file = invalid_dir / "metadata.json"
+        with open(metadata_file, 'w') as f:
+            f.write("{invalid json")
+
+        with pytest.raises(Exception):  # JSONDecodeError or similar
+            load_metadata(str(invalid_dir), Cell)
+
+    def test_save_metadata_creates_directory(self, tmp_path):
+        """Test that save_metadata creates directory if it doesn't exist."""
+        cell = Cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+
+        new_dir = tmp_path / "new_cell_dir"
+        assert not os.path.exists(new_dir)
+
+        save_metadata(cell, str(new_dir))
+
+        assert os.path.exists(new_dir)
+        assert os.path.exists(new_dir / "metadata.json")
 
 
 class TestCellStorageManagerInit:
