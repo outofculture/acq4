@@ -7,6 +7,7 @@ import shutil
 from .models import Cell, PatchAttempt
 from .serialization import save_metadata, load_metadata
 from .event_log import save_event_log, load_event_log
+from .cellfie import save_cellfie, load_cellfie
 
 
 class CellStorageManager:
@@ -86,8 +87,8 @@ class CellStorageManager:
             Dictionary with 'x', 'y', 'z' keys (floats) for cell position.
         initial_resistance : float
             Initial resistance measurement in MΩ.
-        cellfie_data : optional
-            Image data for the cellfie (not yet implemented).
+        cellfie_data : numpy.ndarray, optional
+            Image data for the cellfie. Typically a 3D numpy array.
         notes : str, optional
             Notes about the cell.
 
@@ -106,10 +107,13 @@ class CellStorageManager:
         # Create the cell's directory
         cell_dir = os.path.join(self._get_cells_dir(), cell.uuid)
 
-        # Save metadata
-        save_metadata(cell, cell_dir)
+        # Save cellfie if provided
+        if cellfie_data is not None:
+            save_cellfie(cellfie_data, cell_dir)
+            cell.cellfie_filename = "cellfie.npy"
 
-        # TODO: Handle cellfie_data when needed (Step 7)
+        # Save metadata (including updated cellfie_filename if set)
+        save_metadata(cell, cell_dir)
 
         return cell
 
@@ -421,6 +425,37 @@ class CellStorageManager:
         """
         attempt_dir = os.path.join(self._get_attempts_dir(), attempt_uuid)
         save_event_log(event_log, attempt_dir)
+
+    def get_cellfie(self, cell_uuid):
+        """
+        Get the cellfie image for a cell.
+
+        Parameters
+        ----------
+        cell_uuid : str
+            UUID of the cell.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            The cellfie image data, or None if no cellfie exists.
+        """
+        cell_dir = os.path.join(self._get_cells_dir(), cell_uuid)
+        return load_cellfie(cell_dir)
+
+    def update_cellfie(self, cell_uuid, cellfie_data):
+        """
+        Update or create the cellfie image for a cell.
+
+        Parameters
+        ----------
+        cell_uuid : str
+            UUID of the cell.
+        cellfie_data : numpy.ndarray
+            The cellfie image data to save.
+        """
+        cell_dir = os.path.join(self._get_cells_dir(), cell_uuid)
+        save_cellfie(cellfie_data, cell_dir)
 
 
 __all__ = ['CellStorageManager']

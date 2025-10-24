@@ -5,6 +5,7 @@ import os
 import pytest
 import tempfile
 import shutil
+import numpy as np
 
 from acq4.util.cell_storage import CellStorageManager
 from acq4.util.cell_storage.models import Cell, PatchAttempt
@@ -12,6 +13,7 @@ from acq4.util.cell_storage.serialization import (
     save_metadata, load_metadata, ensure_dir_exists
 )
 from acq4.util.cell_storage.event_log import save_event_log, load_event_log
+from acq4.util.cell_storage.cellfie import save_cellfie, load_cellfie
 
 
 class TestCellModel:
@@ -1135,6 +1137,179 @@ class TestEventLogIntegration:
         retrieved_log = manager.get_event_log(attempt.uuid)
         assert len(retrieved_log) == 1
         assert retrieved_log[0]["event"] == "new_event"
+
+
+class TestCellfieUtilities:
+    """Test cellfie save/load utilities."""
+
+    def test_save_cellfie_numpy_array(self, tmp_path):
+        """Test saving cellfie as numpy array."""
+        cellfie_data = np.random.rand(10, 10, 5)  # Small 3D image
+
+        test_dir = tmp_path / "test_cell"
+        save_cellfie(cellfie_data, str(test_dir))
+
+        # Check that cellfie.npy was created
+        cellfie_file = test_dir / "cellfie.npy"
+        assert os.path.exists(cellfie_file)
+
+    def test_save_cellfie_none(self, tmp_path):
+        """Test that saving None cellfie doesn't create file."""
+        test_dir = tmp_path / "test_cell"
+        save_cellfie(None, str(test_dir))
+
+        # Check that no cellfie file was created
+        cellfie_npy = test_dir / "cellfie.npy"
+        assert not os.path.exists(cellfie_npy)
+
+    def test_load_cellfie(self, tmp_path):
+        """Test loading cellfie from file."""
+        # First save a cellfie
+        cellfie_data = np.random.rand(10, 10, 5)
+
+        test_dir = tmp_path / "test_cell"
+        save_cellfie(cellfie_data, str(test_dir))
+
+        # Now load it back
+        loaded_data = load_cellfie(str(test_dir))
+
+        assert loaded_data is not None
+        assert isinstance(loaded_data, np.ndarray)
+        assert loaded_data.shape == (10, 10, 5)
+        np.testing.assert_array_almost_equal(loaded_data, cellfie_data)
+
+    def test_load_cellfie_nonexistent(self, tmp_path):
+        """Test loading cellfie when file doesn't exist."""
+        test_dir = tmp_path / "test_cell"
+        os.makedirs(test_dir)
+
+        # Should return None when file doesn't exist
+        loaded_data = load_cellfie(str(test_dir))
+        assert loaded_data is None
+
+    def test_save_cellfie_creates_directory(self, tmp_path):
+        """Test that save_cellfie creates directory if needed."""
+        cellfie_data = np.random.rand(5, 5, 3)
+
+        new_dir = tmp_path / "new_cell_dir"
+        assert not os.path.exists(new_dir)
+
+        save_cellfie(cellfie_data, str(new_dir))
+
+        assert os.path.exists(new_dir)
+        assert os.path.exists(new_dir / "cellfie.npy")
+
+    def test_save_cellfie_with_custom_filename(self, tmp_path):
+        """Test saving cellfie with custom filename."""
+        cellfie_data = np.random.rand(5, 5, 3)
+
+        test_dir = tmp_path / "test_cell"
+        save_cellfie(cellfie_data, str(test_dir), filename="custom_cellfie.npy")
+
+        # Check that custom filename was used
+        custom_file = test_dir / "custom_cellfie.npy"
+        assert os.path.exists(custom_file)
+
+
+class TestCellfieIntegration:
+    """Test cellfie integration with CellStorageManager."""
+
+    def test_create_cell_with_cellfie(self, tmp_path):
+        """Test creating cell with cellfie data."""
+        manager = CellStorageManager(str(tmp_path))
+
+        cellfie_data = np.random.rand(10, 10, 5)
+
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2,
+            cellfie_data=cellfie_data
+        )
+
+        # Verify cellfie file was created
+        cell_dir = os.path.join(manager._get_cells_dir(), cell.uuid)
+        cellfie_file = os.path.join(cell_dir, "cellfie.npy")
+        assert os.path.exists(cellfie_file)
+
+        # Verify Cell metadata was updated with filename
+        assert cell.cellfie_filename == "cellfie.npy"
+
+    def test_get_cellfie(self, tmp_path):
+        """Test getting cellfie for a cell."""
+        manager = CellStorageManager(str(tmp_path))
+
+        cellfie_data = np.random.rand(10, 10, 5)
+
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2,
+            cellfie_data=cellfie_data
+        )
+
+        # Get the cellfie
+        retrieved_data = manager.get_cellfie(cell.uuid)
+
+        assert retrieved_data is not None
+        assert isinstance(retrieved_data, np.ndarray)
+        assert retrieved_data.shape == (10, 10, 5)
+        np.testing.assert_array_almost_equal(retrieved_data, cellfie_data)
+
+    def test_get_cellfie_nonexistent(self, tmp_path):
+        """Test getting cellfie when it doesn't exist."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create cell without cellfie
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+
+        # Get cellfie should return None
+        retrieved_data = manager.get_cellfie(cell.uuid)
+        assert retrieved_data is None
+
+    def test_update_cellfie(self, tmp_path):
+        """Test updating cellfie for a cell."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create cell without cellfie
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+
+        # Initially no cellfie
+        assert manager.get_cellfie(cell.uuid) is None
+
+        # Update with new cellfie
+        new_cellfie = np.random.rand(10, 10, 5)
+        manager.update_cellfie(cell.uuid, new_cellfie)
+
+        # Verify it was saved
+        retrieved_data = manager.get_cellfie(cell.uuid)
+        assert retrieved_data is not None
+        np.testing.assert_array_almost_equal(retrieved_data, new_cellfie)
+
+    def test_update_cellfie_overwrites(self, tmp_path):
+        """Test that updating cellfie overwrites existing one."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create cell with initial cellfie
+        initial_cellfie = np.ones((5, 5, 3))
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2,
+            cellfie_data=initial_cellfie
+        )
+
+        # Update with new cellfie
+        new_cellfie = np.zeros((10, 10, 5))
+        manager.update_cellfie(cell.uuid, new_cellfie)
+
+        # Verify it was overwritten
+        retrieved_data = manager.get_cellfie(cell.uuid)
+        assert retrieved_data.shape == (10, 10, 5)
+        np.testing.assert_array_almost_equal(retrieved_data, new_cellfie)
 
 
 # Pytest fixture for creating a temporary storage manager
