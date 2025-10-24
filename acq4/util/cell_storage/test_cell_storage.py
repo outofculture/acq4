@@ -480,6 +480,177 @@ class TestCellStorageManagerHelpers:
         assert os.path.isabs(attempts_dir)
 
 
+class TestCellStorageOperations:
+    """Test Cell CRUD operations in CellStorageManager."""
+
+    def test_create_cell(self, tmp_path):
+        """Test creating a new cell."""
+        manager = CellStorageManager(str(tmp_path))
+
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2,
+            notes="Test cell"
+        )
+
+        assert cell is not None
+        assert cell.uuid is not None
+        assert cell.global_position == {"x": 100.0, "y": 200.0, "z": 50.0}
+        assert cell.initial_resistance == 5.2
+        assert cell.notes == "Test cell"
+
+        # Verify directory was created
+        cell_dir = os.path.join(manager._get_cells_dir(), cell.uuid)
+        assert os.path.exists(cell_dir)
+
+        # Verify metadata.json was created
+        metadata_file = os.path.join(cell_dir, "metadata.json")
+        assert os.path.exists(metadata_file)
+
+    def test_create_cell_saves_metadata(self, tmp_path):
+        """Test that create_cell saves metadata correctly."""
+        manager = CellStorageManager(str(tmp_path))
+
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+
+        # Load the metadata directly and verify
+        cell_dir = os.path.join(manager._get_cells_dir(), cell.uuid)
+        loaded_cell = load_metadata(cell_dir, Cell)
+
+        assert loaded_cell.uuid == cell.uuid
+        assert loaded_cell.global_position == cell.global_position
+        assert loaded_cell.initial_resistance == cell.initial_resistance
+
+    def test_get_cell(self, tmp_path):
+        """Test retrieving a cell by UUID."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create a cell
+        created_cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2,
+            notes="Test cell"
+        )
+
+        # Retrieve it
+        retrieved_cell = manager.get_cell(created_cell.uuid)
+
+        assert retrieved_cell.uuid == created_cell.uuid
+        assert retrieved_cell.global_position == created_cell.global_position
+        assert retrieved_cell.initial_resistance == created_cell.initial_resistance
+        assert retrieved_cell.notes == created_cell.notes
+
+    def test_get_cell_nonexistent(self, tmp_path):
+        """Test that get_cell raises ValueError for nonexistent cell."""
+        manager = CellStorageManager(str(tmp_path))
+
+        with pytest.raises(ValueError):
+            manager.get_cell("nonexistent-uuid")
+
+    def test_list_cells_empty(self, tmp_path):
+        """Test listing cells when none exist."""
+        manager = CellStorageManager(str(tmp_path))
+
+        cells = manager.list_cells()
+
+        assert cells == []
+
+    def test_list_cells_single(self, tmp_path):
+        """Test listing cells with one cell."""
+        manager = CellStorageManager(str(tmp_path))
+
+        created_cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+
+        cells = manager.list_cells()
+
+        assert len(cells) == 1
+        assert cells[0].uuid == created_cell.uuid
+
+    def test_list_cells_multiple(self, tmp_path):
+        """Test listing multiple cells."""
+        manager = CellStorageManager(str(tmp_path))
+
+        cell1 = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+        cell2 = manager.create_cell(
+            global_position={"x": 150.0, "y": 250.0, "z": 60.0},
+            initial_resistance=6.3
+        )
+        cell3 = manager.create_cell(
+            global_position={"x": 200.0, "y": 300.0, "z": 70.0},
+            initial_resistance=7.4
+        )
+
+        cells = manager.list_cells()
+
+        assert len(cells) == 3
+        uuids = {cell.uuid for cell in cells}
+        assert cell1.uuid in uuids
+        assert cell2.uuid in uuids
+        assert cell3.uuid in uuids
+
+    def test_update_cell(self, tmp_path):
+        """Test updating a cell's metadata."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create a cell
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2,
+            notes="Original notes"
+        )
+
+        # Modify it
+        cell.notes = "Updated notes"
+        cell.initial_resistance = 6.0
+
+        # Update it
+        manager.update_cell(cell)
+
+        # Retrieve it and verify changes
+        updated_cell = manager.get_cell(cell.uuid)
+        assert updated_cell.notes == "Updated notes"
+        assert updated_cell.initial_resistance == 6.0
+
+    def test_delete_cell(self, tmp_path):
+        """Test deleting a cell."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create a cell
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+
+        cell_dir = os.path.join(manager._get_cells_dir(), cell.uuid)
+        assert os.path.exists(cell_dir)
+
+        # Delete it
+        manager.delete_cell(cell.uuid)
+
+        # Verify directory is gone
+        assert not os.path.exists(cell_dir)
+
+        # Verify it's not in the list
+        cells = manager.list_cells()
+        assert len(cells) == 0
+
+    def test_delete_cell_nonexistent(self, tmp_path):
+        """Test that delete_cell raises ValueError for nonexistent cell."""
+        manager = CellStorageManager(str(tmp_path))
+
+        with pytest.raises(ValueError):
+            manager.delete_cell("nonexistent-uuid")
+
+
 # Pytest fixture for creating a temporary storage manager
 @pytest.fixture
 def storage_manager(tmp_path):
