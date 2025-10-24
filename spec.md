@@ -47,3 +47,8 @@ Contract highlights:
 - Attachments such as `cellfie.tif` or `event-log.json` live alongside the metadata to keep rsync/databrowser flows straightforward; metadata references these filenames directly.
 
 All new code should use `ensure_structured_object_roots` + `StructuredPathHelper` to resolve directories, and typed record helpers (`CellRecord`, `PatchAttemptRecord`) to produce metadata dictionaries. `PatchAttemptRecord` enforces cross-links to existing cells (`cell_uuid`), captures success booleans, tasks run, and a canonical list of multipatch events (`timestamp_s`, `device`, `payload`). The schema helper (`acq4.data.structured.schema`) validates incoming metadata and provides upgrade hooks so future migrations can be applied centrally rather than in each caller.
+
+### Persistence helpers
+
+- `acq4.data.structured.storage.write_{cell,patch_attempt}_metadata(...)` writes JSON atomically (temp file + `os.replace`) with deterministic ordering. The paired `read_*` helpers hydrate `CellRecord`/`PatchAttemptRecord`.
+- Attachment helpers (`write_cellfie_image`, `write_event_log`, `write_tasks_run`) stream data into the canonical filenames, computing SHA-256 checksums + byte counts and returning `AttachmentInfo` so callers can log or persist integrity metadata alongside the records.

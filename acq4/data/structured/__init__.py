@@ -16,6 +16,16 @@ from .layout import StructuredRootLayout, ensure_structured_object_roots
 from .paths import CellRecordPaths, PatchAttemptRecordPaths, StructuredPathHelper
 from .records import CellRecord, PatchAttemptEvent, PatchAttemptRecord
 from .schema import registry as schema_registry
+from .storage import (
+    AttachmentInfo,
+    read_cell_metadata,
+    read_patch_attempt_metadata,
+    write_cell_metadata,
+    write_cellfie_image,
+    write_event_log,
+    write_patch_attempt_metadata,
+    write_tasks_run,
+)
 
 __all__ = [
     "STRUCTURED_ROOT_NAME",
@@ -36,4 +46,12 @@ __all__ = [
     "PatchAttemptRecord",
     "PatchAttemptEvent",
     "schema_registry",
+    "AttachmentInfo",
+    "write_cell_metadata",
+    "read_cell_metadata",
+    "write_patch_attempt_metadata",
+    "read_patch_attempt_metadata",
+    "write_cellfie_image",
+    "write_event_log",
+    "write_tasks_run",
 ]
