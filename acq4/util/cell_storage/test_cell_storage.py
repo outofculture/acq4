@@ -651,6 +651,266 @@ class TestCellStorageOperations:
             manager.delete_cell("nonexistent-uuid")
 
 
+class TestPatchAttemptStorageOperations:
+    """Test Patch Attempt CRUD operations in CellStorageManager."""
+
+    def test_create_patch_attempt(self, tmp_path):
+        """Test creating a new patch attempt."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # First create a cell
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+
+        # Create a patch attempt for that cell
+        attempt = manager.create_patch_attempt(
+            cell_id=cell.uuid,
+            successful_seal=True,
+            tasks_run=["recording1"],
+            notes="Good attempt"
+        )
+
+        assert attempt is not None
+        assert attempt.uuid is not None
+        assert attempt.cell_id == cell.uuid
+        assert attempt.successful_seal is True
+        assert attempt.tasks_run == ["recording1"]
+        assert attempt.notes == "Good attempt"
+
+        # Verify directory was created
+        attempt_dir = os.path.join(manager._get_attempts_dir(), attempt.uuid)
+        assert os.path.exists(attempt_dir)
+
+        # Verify metadata.json was created
+        metadata_file = os.path.join(attempt_dir, "metadata.json")
+        assert os.path.exists(metadata_file)
+
+    def test_create_patch_attempt_validates_cell_id(self, tmp_path):
+        """Test that create_patch_attempt validates cell_id exists."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Try to create attempt with nonexistent cell_id
+        with pytest.raises(ValueError):
+            manager.create_patch_attempt(
+                cell_id="nonexistent-cell-uuid",
+                successful_seal=True
+            )
+
+    def test_create_patch_attempt_saves_metadata(self, tmp_path):
+        """Test that create_patch_attempt saves metadata correctly."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create a cell first
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+
+        # Create attempt
+        attempt = manager.create_patch_attempt(
+            cell_id=cell.uuid,
+            successful_seal=True
+        )
+
+        # Load the metadata directly and verify
+        attempt_dir = os.path.join(manager._get_attempts_dir(), attempt.uuid)
+        loaded_attempt = load_metadata(attempt_dir, PatchAttempt)
+
+        assert loaded_attempt.uuid == attempt.uuid
+        assert loaded_attempt.cell_id == attempt.cell_id
+        assert loaded_attempt.successful_seal == attempt.successful_seal
+
+    def test_get_patch_attempt(self, tmp_path):
+        """Test retrieving a patch attempt by UUID."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create cell and attempt
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+        created_attempt = manager.create_patch_attempt(
+            cell_id=cell.uuid,
+            successful_seal=True,
+            notes="Test attempt"
+        )
+
+        # Retrieve it
+        retrieved_attempt = manager.get_patch_attempt(created_attempt.uuid)
+
+        assert retrieved_attempt.uuid == created_attempt.uuid
+        assert retrieved_attempt.cell_id == created_attempt.cell_id
+        assert retrieved_attempt.successful_seal == created_attempt.successful_seal
+        assert retrieved_attempt.notes == created_attempt.notes
+
+    def test_get_patch_attempt_nonexistent(self, tmp_path):
+        """Test that get_patch_attempt raises ValueError for nonexistent attempt."""
+        manager = CellStorageManager(str(tmp_path))
+
+        with pytest.raises(ValueError):
+            manager.get_patch_attempt("nonexistent-uuid")
+
+    def test_list_patch_attempts_empty(self, tmp_path):
+        """Test listing patch attempts when none exist."""
+        manager = CellStorageManager(str(tmp_path))
+
+        attempts = manager.list_patch_attempts()
+
+        assert attempts == []
+
+    def test_list_patch_attempts_single(self, tmp_path):
+        """Test listing patch attempts with one attempt."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create cell and attempt
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+        created_attempt = manager.create_patch_attempt(cell_id=cell.uuid)
+
+        attempts = manager.list_patch_attempts()
+
+        assert len(attempts) == 1
+        assert attempts[0].uuid == created_attempt.uuid
+
+    def test_list_patch_attempts_multiple(self, tmp_path):
+        """Test listing multiple patch attempts."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create cells
+        cell1 = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+        cell2 = manager.create_cell(
+            global_position={"x": 150.0, "y": 250.0, "z": 60.0},
+            initial_resistance=6.3
+        )
+
+        # Create attempts
+        attempt1 = manager.create_patch_attempt(cell_id=cell1.uuid)
+        attempt2 = manager.create_patch_attempt(cell_id=cell1.uuid)
+        attempt3 = manager.create_patch_attempt(cell_id=cell2.uuid)
+
+        attempts = manager.list_patch_attempts()
+
+        assert len(attempts) == 3
+        uuids = {attempt.uuid for attempt in attempts}
+        assert attempt1.uuid in uuids
+        assert attempt2.uuid in uuids
+        assert attempt3.uuid in uuids
+
+    def test_list_patch_attempts_filtered_by_cell(self, tmp_path):
+        """Test listing patch attempts filtered by cell_id."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create cells
+        cell1 = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+        cell2 = manager.create_cell(
+            global_position={"x": 150.0, "y": 250.0, "z": 60.0},
+            initial_resistance=6.3
+        )
+
+        # Create attempts for different cells
+        attempt1_1 = manager.create_patch_attempt(cell_id=cell1.uuid)
+        attempt1_2 = manager.create_patch_attempt(cell_id=cell1.uuid)
+        attempt2_1 = manager.create_patch_attempt(cell_id=cell2.uuid)
+
+        # Filter by cell1
+        cell1_attempts = manager.list_patch_attempts(cell_id=cell1.uuid)
+
+        assert len(cell1_attempts) == 2
+        assert all(a.cell_id == cell1.uuid for a in cell1_attempts)
+        uuids = {a.uuid for a in cell1_attempts}
+        assert attempt1_1.uuid in uuids
+        assert attempt1_2.uuid in uuids
+        assert attempt2_1.uuid not in uuids
+
+    def test_get_cell_patch_attempts(self, tmp_path):
+        """Test convenience method for getting cell's attempts."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create cell and attempts
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+        attempt1 = manager.create_patch_attempt(cell_id=cell.uuid)
+        attempt2 = manager.create_patch_attempt(cell_id=cell.uuid)
+
+        # Get cell's attempts
+        cell_attempts = manager.get_cell_patch_attempts(cell.uuid)
+
+        assert len(cell_attempts) == 2
+        assert all(a.cell_id == cell.uuid for a in cell_attempts)
+
+    def test_update_patch_attempt(self, tmp_path):
+        """Test updating a patch attempt's metadata."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create cell and attempt
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+        attempt = manager.create_patch_attempt(
+            cell_id=cell.uuid,
+            successful_seal=False,
+            notes="Original notes"
+        )
+
+        # Modify it
+        attempt.successful_seal = True
+        attempt.notes = "Updated notes"
+        attempt.tasks_run = ["new_task"]
+
+        # Update it
+        manager.update_patch_attempt(attempt)
+
+        # Retrieve it and verify changes
+        updated_attempt = manager.get_patch_attempt(attempt.uuid)
+        assert updated_attempt.successful_seal is True
+        assert updated_attempt.notes == "Updated notes"
+        assert updated_attempt.tasks_run == ["new_task"]
+
+    def test_delete_patch_attempt(self, tmp_path):
+        """Test deleting a patch attempt."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create cell and attempt
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+        attempt = manager.create_patch_attempt(cell_id=cell.uuid)
+
+        attempt_dir = os.path.join(manager._get_attempts_dir(), attempt.uuid)
+        assert os.path.exists(attempt_dir)
+
+        # Delete it
+        manager.delete_patch_attempt(attempt.uuid)
+
+        # Verify directory is gone
+        assert not os.path.exists(attempt_dir)
+
+        # Verify it's not in the list
+        attempts = manager.list_patch_attempts()
+        assert len(attempts) == 0
+
+    def test_delete_patch_attempt_nonexistent(self, tmp_path):
+        """Test that delete_patch_attempt raises ValueError for nonexistent attempt."""
+        manager = CellStorageManager(str(tmp_path))
+
+        with pytest.raises(ValueError):
+            manager.delete_patch_attempt("nonexistent-uuid")
+
+
 # Pytest fixture for creating a temporary storage manager
 @pytest.fixture
 def storage_manager(tmp_path):
