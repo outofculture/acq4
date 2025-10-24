@@ -6,6 +6,7 @@ import shutil
 
 from .models import Cell, PatchAttempt
 from .serialization import save_metadata, load_metadata
+from .event_log import save_event_log, load_event_log
 
 
 class CellStorageManager:
@@ -262,7 +263,9 @@ class CellStorageManager:
         # Save metadata
         save_metadata(attempt, attempt_dir)
 
-        # TODO: Handle event_log when needed (Step 6)
+        # Save event log if provided
+        if event_log is not None:
+            save_event_log(event_log, attempt_dir)
 
         return attempt
 
@@ -387,6 +390,37 @@ class CellStorageManager:
 
         # Remove the entire directory
         shutil.rmtree(attempt_dir)
+
+    def get_event_log(self, attempt_uuid):
+        """
+        Get the event log for a patch attempt.
+
+        Parameters
+        ----------
+        attempt_uuid : str
+            UUID of the patch attempt.
+
+        Returns
+        -------
+        dict, list, or None
+            The event log data, or None if no event log exists.
+        """
+        attempt_dir = os.path.join(self._get_attempts_dir(), attempt_uuid)
+        return load_event_log(attempt_dir)
+
+    def update_event_log(self, attempt_uuid, event_log):
+        """
+        Update or create the event log for a patch attempt.
+
+        Parameters
+        ----------
+        attempt_uuid : str
+            UUID of the patch attempt.
+        event_log : dict or list
+            The event log data to save.
+        """
+        attempt_dir = os.path.join(self._get_attempts_dir(), attempt_uuid)
+        save_event_log(event_log, attempt_dir)
 
 
 __all__ = ['CellStorageManager']

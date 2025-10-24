@@ -11,6 +11,7 @@ from acq4.util.cell_storage.models import Cell, PatchAttempt
 from acq4.util.cell_storage.serialization import (
     save_metadata, load_metadata, ensure_dir_exists
 )
+from acq4.util.cell_storage.event_log import save_event_log, load_event_log
 
 
 class TestCellModel:
@@ -909,6 +910,231 @@ class TestPatchAttemptStorageOperations:
 
         with pytest.raises(ValueError):
             manager.delete_patch_attempt("nonexistent-uuid")
+
+
+class TestEventLogUtilities:
+    """Test event log save/load utilities."""
+
+    def test_save_event_log_dict(self, tmp_path):
+        """Test saving event log as a dictionary."""
+        event_log = {
+            "start_time": "2025-10-24T10:00:00",
+            "events": [
+                {"time": "2025-10-24T10:00:10", "device": "pipette", "event": "approach"},
+                {"time": "2025-10-24T10:00:20", "device": "pipette", "event": "seal"}
+            ]
+        }
+
+        test_dir = tmp_path / "test_attempt"
+        save_event_log(event_log, str(test_dir))
+
+        # Check that event_log.json was created
+        event_log_file = test_dir / "event_log.json"
+        assert os.path.exists(event_log_file)
+
+        # Verify content
+        import json
+        with open(event_log_file, 'r') as f:
+            data = json.load(f)
+
+        assert data["start_time"] == "2025-10-24T10:00:00"
+        assert len(data["events"]) == 2
+
+    def test_save_event_log_list(self, tmp_path):
+        """Test saving event log as a list."""
+        event_log = [
+            {"time": "2025-10-24T10:00:10", "device": "pipette", "event": "approach"},
+            {"time": "2025-10-24T10:00:20", "device": "pipette", "event": "seal"}
+        ]
+
+        test_dir = tmp_path / "test_attempt"
+        save_event_log(event_log, str(test_dir))
+
+        # Check that event_log.json was created
+        event_log_file = test_dir / "event_log.json"
+        assert os.path.exists(event_log_file)
+
+        # Verify content
+        import json
+        with open(event_log_file, 'r') as f:
+            data = json.load(f)
+
+        assert len(data) == 2
+        assert data[0]["event"] == "approach"
+
+    def test_save_event_log_none(self, tmp_path):
+        """Test that saving None event log doesn't create file."""
+        test_dir = tmp_path / "test_attempt"
+        save_event_log(None, str(test_dir))
+
+        # Check that event_log.json was NOT created
+        event_log_file = test_dir / "event_log.json"
+        assert not os.path.exists(event_log_file)
+
+    def test_load_event_log(self, tmp_path):
+        """Test loading event log from JSON."""
+        # First save an event log
+        event_log = {
+            "start_time": "2025-10-24T10:00:00",
+            "events": [{"time": "2025-10-24T10:00:10", "event": "seal"}]
+        }
+
+        test_dir = tmp_path / "test_attempt"
+        save_event_log(event_log, str(test_dir))
+
+        # Now load it back
+        loaded_log = load_event_log(str(test_dir))
+
+        assert loaded_log["start_time"] == "2025-10-24T10:00:00"
+        assert len(loaded_log["events"]) == 1
+
+    def test_load_event_log_nonexistent(self, tmp_path):
+        """Test loading event log when file doesn't exist."""
+        test_dir = tmp_path / "test_attempt"
+        os.makedirs(test_dir)
+
+        # Should return None when file doesn't exist
+        loaded_log = load_event_log(str(test_dir))
+        assert loaded_log is None
+
+    def test_save_event_log_creates_directory(self, tmp_path):
+        """Test that save_event_log creates directory if needed."""
+        event_log = {"test": "data"}
+
+        new_dir = tmp_path / "new_attempt_dir"
+        assert not os.path.exists(new_dir)
+
+        save_event_log(event_log, str(new_dir))
+
+        assert os.path.exists(new_dir)
+        assert os.path.exists(new_dir / "event_log.json")
+
+
+class TestEventLogIntegration:
+    """Test event log integration with CellStorageManager."""
+
+    def test_create_patch_attempt_with_event_log(self, tmp_path):
+        """Test creating patch attempt with event log."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create a cell
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+
+        # Create attempt with event log
+        event_log = [
+            {"time": "10:00:10", "event": "approach"},
+            {"time": "10:00:20", "event": "seal"}
+        ]
+
+        attempt = manager.create_patch_attempt(
+            cell_id=cell.uuid,
+            event_log=event_log
+        )
+
+        # Verify event_log.json was created
+        attempt_dir = os.path.join(manager._get_attempts_dir(), attempt.uuid)
+        event_log_file = os.path.join(attempt_dir, "event_log.json")
+        assert os.path.exists(event_log_file)
+
+    def test_get_event_log(self, tmp_path):
+        """Test getting event log for a patch attempt."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create cell and attempt with event log
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+
+        event_log = [
+            {"time": "10:00:10", "event": "approach"},
+            {"time": "10:00:20", "event": "seal"}
+        ]
+
+        attempt = manager.create_patch_attempt(
+            cell_id=cell.uuid,
+            event_log=event_log
+        )
+
+        # Get the event log
+        retrieved_log = manager.get_event_log(attempt.uuid)
+
+        assert retrieved_log is not None
+        assert len(retrieved_log) == 2
+        assert retrieved_log[0]["event"] == "approach"
+        assert retrieved_log[1]["event"] == "seal"
+
+    def test_get_event_log_nonexistent(self, tmp_path):
+        """Test getting event log when it doesn't exist."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create cell and attempt without event log
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+
+        attempt = manager.create_patch_attempt(cell_id=cell.uuid)
+
+        # Get event log should return None
+        retrieved_log = manager.get_event_log(attempt.uuid)
+        assert retrieved_log is None
+
+    def test_update_event_log(self, tmp_path):
+        """Test updating event log for a patch attempt."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create cell and attempt
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+
+        attempt = manager.create_patch_attempt(cell_id=cell.uuid)
+
+        # Initially no event log
+        assert manager.get_event_log(attempt.uuid) is None
+
+        # Update with new event log
+        new_log = [
+            {"time": "10:00:10", "event": "approach"},
+            {"time": "10:00:20", "event": "seal"}
+        ]
+
+        manager.update_event_log(attempt.uuid, new_log)
+
+        # Verify it was saved
+        retrieved_log = manager.get_event_log(attempt.uuid)
+        assert retrieved_log is not None
+        assert len(retrieved_log) == 2
+
+    def test_update_event_log_overwrites(self, tmp_path):
+        """Test that updating event log overwrites existing one."""
+        manager = CellStorageManager(str(tmp_path))
+
+        # Create cell and attempt with initial event log
+        cell = manager.create_cell(
+            global_position={"x": 100.0, "y": 200.0, "z": 50.0},
+            initial_resistance=5.2
+        )
+
+        initial_log = [{"time": "10:00:00", "event": "start"}]
+        attempt = manager.create_patch_attempt(
+            cell_id=cell.uuid,
+            event_log=initial_log
+        )
+
+        # Update with new log
+        new_log = [{"time": "11:00:00", "event": "new_event"}]
+        manager.update_event_log(attempt.uuid, new_log)
+
+        # Verify it was overwritten
+        retrieved_log = manager.get_event_log(attempt.uuid)
+        assert len(retrieved_log) == 1
+        assert retrieved_log[0]["event"] == "new_event"
 
 
 # Pytest fixture for creating a temporary storage manager
