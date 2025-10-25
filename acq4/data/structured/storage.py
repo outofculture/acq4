@@ -97,6 +97,31 @@ def write_tasks_run(
     return info
 
 
+def compute_attachment_info(path: Path) -> AttachmentInfo:
+    hash_obj = hashlib.sha256()
+    size = 0
+    with open(path, "rb") as handle:
+        while True:
+            chunk = handle.read(CHUNK_SIZE)
+            if not chunk:
+                break
+            hash_obj.update(chunk)
+            size += len(chunk)
+    return AttachmentInfo(
+        filename=path.name,
+        size_bytes=size,
+        sha256=hash_obj.hexdigest(),
+    )
+
+
+def refresh_attachment_manifest(
+    metadata_path: Path, key: str, attachment_path: Path
+) -> AttachmentInfo:
+    info = compute_attachment_info(attachment_path)
+    _update_attachment_manifest(metadata_path, key, info)
+    return info
+
+
 def _atomic_write_json(path: Path, data: Mapping[str, object]) -> None:
     text = json.dumps(data, indent=2, sort_keys=True)
     _write_bytes_atomically(path, text.encode(DEFAULT_ENCODING))

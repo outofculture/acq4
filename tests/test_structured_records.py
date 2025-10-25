@@ -52,6 +52,13 @@ def test_cell_record_validation_errors():
             initial_resistance_ohm=math.nan,
         )
 
+    with pytest.raises(ValueError):
+        CellRecord(
+            uuid="not-a-uuid",
+            global_position_m=(0.0, 0.0, 0.0),
+            initial_resistance_ohm=5e6,
+        )
+
 
 def test_patch_attempt_record_round_trip():
     event = PatchAttemptEvent(
@@ -100,3 +107,15 @@ def test_schema_validation_rejects_unknown_versions():
 
     with pytest.raises(ValueError):
         PatchAttemptRecord.from_metadata_dict(payload)
+
+
+def test_patch_attempt_validates_event_timestamps_monotonic():
+    with pytest.raises(ValueError):
+        PatchAttemptRecord(
+            uuid=uuid4(),
+            cell_uuid=uuid4(),
+            event_log_entries=(
+                PatchAttemptEvent(timestamp_s=1.0, device="A", payload={}),
+                PatchAttemptEvent(timestamp_s=0.5, device="B", payload={}),
+            ),
+        )

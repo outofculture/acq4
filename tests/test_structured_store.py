@@ -1,17 +1,18 @@
 # tests/test_structured_store.py
-# Verifies StructuredObjectStore CRUD operations.
+# Verifies StructuredObjectStore CRUD and listing helpers.
 
+import queue
+import threading
 from uuid import uuid4
 
 import pytest
 
-from acq4.data.structured.loader import AttachmentIntegrityError
 from acq4.data.structured.records import (
     CellRecord,
     PatchAttemptEvent,
     PatchAttemptRecord,
 )
-from acq4.data.structured.store import StructuredObjectStore
+from acq4.data.structured.store import StructuredLockError, StructuredObjectStore
 from acq4.util import DataManager as dm
 
 
@@ -73,17 +74,22 @@ def test_create_patch_requires_cell(tmp_path):
         store.create_patch_attempt(missing_patch)
 
 
-def test_listing(tmp_path):
+def test_listing_and_predicates(tmp_path):
     store = _store(tmp_path)
     cell_ids = [uuid4() for _ in range(3)]
-    for cid in cell_ids:
+    for idx, cid in enumerate(cell_ids):
         record = CellRecord(
-            uuid=cid, global_position_m=(0, 0, 0), initial_resistance_ohm=5e6
+            uuid=cid,
+            global_position_m=(0, 0, 0),
+            initial_resistance_ohm=5e6,
+            notes=f"cell-{idx}",
         )
         store.create_cell(record)
 
-    listed = store.list_cells()
-    assert set(listed) == set(cell_ids)
+    summaries = store.list_cells()
+    assert {s.uuid for s in summaries} == set(cell_ids)
+    filtered = list(store.iter_cells(predicate=lambda s: s.notes == "cell-1"))
+    assert len(filtered) == 1
 
     patch_ids = []
     base_cell = cell_ids[0]
@@ -94,4 +100,37 @@ def test_listing(tmp_path):
         store.create_patch_attempt(patch)
         patch_ids.append(patch.uuid)
 
-    assert set(store.list_patch_attempts()) == set(patch_ids)
+    summaries = store.list_patch_attempts()
+    assert {s.uuid for s in summaries} == set(patch_ids)
+    filtered = list(
+        store.iter_patch_attempts(predicate=lambda s: s.cell_uuid == base_cell)
+    )
+    assert len(filtered) == 2
+
+
+def test_concurrent_create_respects_lock(tmp_path):
+    store = _store(tmp_path)
+    cell_id = uuid4()
+    record = CellRecord(
+        uuid=cell_id, global_position_m=(0, 0, 0), initial_resistance_ohm=5e6
+    )
+
+    # Manually hold the lock so the worker times out.
+    paths = store.paths.cell_paths(cell_id, create=True)
+    paths.directory.mkdir(parents=True, exist_ok=True)
+
+    results = queue.Queue()
+
+    def worker():
+        try:
+            store.create_cell(record)
+            results.put("success")
+        except StructuredLockError:
+            results.put("locked")
+
+    with store._record_write_lock(paths.directory, timeout=0.2):
+        thread = threading.Thread(target=worker)
+        thread.start()
+        thread.join()
+
+    assert results.get() == "locked"

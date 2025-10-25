@@ -24,6 +24,7 @@ from .loader import (
 from .paths import CellRecordPaths, PatchAttemptRecordPaths, StructuredPathHelper
 from .records import CellRecord, PatchAttemptEvent, PatchAttemptRecord
 from .schema import registry as schema_registry
+from .metrics import snapshot as metrics_snapshot
 from .storage import (
     AttachmentInfo,
     read_cell_metadata,
@@ -34,7 +35,13 @@ from .storage import (
     write_patch_attempt_metadata,
     write_tasks_run,
 )
-from .store import StructuredObjectStore
+from .store import (
+    CellSummary,
+    PatchAttemptSummary,
+    StructuredLockError,
+    StructuredObjectStore,
+)
+from .streaming import StreamingPatchLogger
 
 __all__ = [
     "STRUCTURED_ROOT_NAME",
@@ -69,5 +76,10 @@ __all__ = [
     "load_cell",
     "load_patch_attempt",
     "AttachmentIntegrityError",
+    "CellSummary",
+    "PatchAttemptSummary",
+    "StructuredLockError",
     "StructuredObjectStore",
+    "StreamingPatchLogger",
+    "metrics_snapshot",
 ]
