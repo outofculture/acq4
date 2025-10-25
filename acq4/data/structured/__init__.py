@@ -34,6 +34,7 @@ from .storage import (
     write_patch_attempt_metadata,
     write_tasks_run,
 )
+from .store import StructuredObjectStore
 
 __all__ = [
     "STRUCTURED_ROOT_NAME",
@@ -68,4 +69,5 @@ __all__ = [
     "load_cell",
     "load_patch_attempt",
     "AttachmentIntegrityError",
+    "StructuredObjectStore",
 ]
