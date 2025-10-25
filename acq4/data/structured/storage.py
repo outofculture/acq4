@@ -35,6 +35,13 @@ class AttachmentInfo:
     size_bytes: int
     sha256: str
 
+    def to_dict(self) -> dict:
+        return {
+            "filename": self.filename,
+            "size_bytes": self.size_bytes,
+            "sha256": self.sha256,
+        }
+
 
 def write_cell_metadata(paths: CellRecordPaths, record: CellRecord) -> None:
     _atomic_write_json(paths.metadata_path, record.to_metadata_dict())
@@ -60,6 +67,7 @@ def read_patch_attempt_metadata(paths: PatchAttemptRecordPaths) -> PatchAttemptR
 
 def write_cellfie_image(paths: CellRecordPaths, source: BinarySource) -> AttachmentInfo:
     info = _write_binary_attachment(paths.cellfie_path, source)
+    _update_attachment_manifest(paths.metadata_path, "cellfie", info)
     logger.debug("Persisted cellfie attachment at %s", paths.cellfie_path)
     return info
 
@@ -73,6 +81,7 @@ def write_event_log(
     info = _write_binary_attachment(
         paths.event_log_path, payload.encode(DEFAULT_ENCODING)
     )
+    _update_attachment_manifest(paths.metadata_path, "event_log", info)
     logger.debug("Persisted event log with %d entries", len(serialized))
     return info
 
@@ -83,6 +92,7 @@ def write_tasks_run(
     normalized = [_coerce_task(t) for t in tasks]
     payload = json.dumps(normalized, indent=2)
     info = _write_binary_attachment(paths.tasks_path, payload.encode(DEFAULT_ENCODING))
+    _update_attachment_manifest(paths.metadata_path, "tasks_run", info)
     logger.debug("Persisted tasks-run attachment with %d entries", len(normalized))
     return info
 
@@ -92,7 +102,7 @@ def _atomic_write_json(path: Path, data: Mapping[str, object]) -> None:
     _write_bytes_atomically(path, text.encode(DEFAULT_ENCODING))
 
 
-def _read_json(path: Path) -> Mapping[str, object]:
+def _read_json(path: Path) -> dict:
     try:
         with open(path, "r", encoding=DEFAULT_ENCODING) as handle:
             return json.load(handle)
@@ -187,3 +197,13 @@ def _coerce_task(task: object) -> str:
     if not text:
         raise ValueError("tasks_run entries must be non-empty strings")
     return text
+
+
+def _update_attachment_manifest(
+    metadata_path: Path, key: str, info: AttachmentInfo
+) -> None:
+    metadata = _read_json(metadata_path)
+    attachments = dict(metadata.get("attachments", {}))
+    attachments[key] = info.to_dict()
+    metadata["attachments"] = attachments
+    _atomic_write_json(metadata_path, metadata)

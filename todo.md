@@ -8,7 +8,7 @@
 - [x] B3: add schema version scaffolding + upgrade hooks
 - [x] C1: metadata writer/reader with atomic file ops
 - [x] C2: attachment writers (cellfie, event log) + checksum capture
-- [ ] C3: loader that rehydrates attachments + verifies integrity
+- [x] C3: loader that rehydrates attachments + verifies integrity
 - [ ] D1: StructuredObjectStore CRUD facade
 - [ ] D2: listing/query helpers + lightweight index
 - [ ] D3: locking/concurrency safeguards in store

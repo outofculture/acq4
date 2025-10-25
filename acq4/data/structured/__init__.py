@@ -13,6 +13,14 @@ from .constants import (
     TASKS_FILENAME,
 )
 from .layout import StructuredRootLayout, ensure_structured_object_roots
+from .loader import (
+    AttachmentIntegrityError,
+    AttachmentPayload,
+    LoadedCellRecord,
+    LoadedPatchAttemptRecord,
+    load_cell,
+    load_patch_attempt,
+)
 from .paths import CellRecordPaths, PatchAttemptRecordPaths, StructuredPathHelper
 from .records import CellRecord, PatchAttemptEvent, PatchAttemptRecord
 from .schema import registry as schema_registry
@@ -54,4 +62,10 @@ __all__ = [
     "write_cellfie_image",
     "write_event_log",
     "write_tasks_run",
+    "AttachmentPayload",
+    "LoadedCellRecord",
+    "LoadedPatchAttemptRecord",
+    "load_cell",
+    "load_patch_attempt",
+    "AttachmentIntegrityError",
 ]

@@ -80,6 +80,12 @@ def test_write_and_read_patch_metadata(tmp_path):
 def test_cellfie_writer_returns_checksum(tmp_path):
     helper = _helper(tmp_path)
     paths = helper.cell_paths(uuid4(), create=True)
+    record = CellRecord(
+        uuid=paths.uuid,
+        global_position_m=(0.0, 0.0, 0.0),
+        initial_resistance_ohm=5e6,
+    )
+    write_cell_metadata(paths, record)
 
     payload = b"\x00\x01\x02"
     info = write_cellfie_image(paths, payload)
@@ -90,11 +96,19 @@ def test_cellfie_writer_returns_checksum(tmp_path):
     assert data == payload
     assert hashlib.sha256(data).hexdigest() == info.sha256
 
+    metadata = json.load(open(paths.metadata_path, "r", encoding="utf-8"))
+    assert metadata["attachments"]["cellfie"]["sha256"] == info.sha256
+
 
 def test_event_log_writer_serializes_entries(tmp_path):
     helper = _helper(tmp_path)
     paths = helper.patch_attempt_paths(uuid4(), create=True)
-    helper.patch_attempt_paths(paths.uuid, create=True)
+    record = PatchAttemptRecord(
+        uuid=paths.uuid,
+        cell_uuid=uuid4(),
+        event_log_entries=(),
+    )
+    write_patch_attempt_metadata(paths, record)
 
     entries = [
         PatchAttemptEvent(timestamp_s=0.1, device="A", payload={"v": 1}),
@@ -109,15 +123,25 @@ def test_event_log_writer_serializes_entries(tmp_path):
     assert info.size_bytes == len(
         json.dumps(data, indent=2, sort_keys=True).encode("utf-8")
     )
+    metadata = json.load(open(paths.metadata_path, "r", encoding="utf-8"))
+    assert metadata["attachments"]["event_log"]["sha256"] == info.sha256
 
 
 def test_tasks_writer_rejects_blank_entries(tmp_path):
     helper = _helper(tmp_path)
     paths = helper.patch_attempt_paths(uuid4(), create=True)
+    record = PatchAttemptRecord(
+        uuid=paths.uuid,
+        cell_uuid=uuid4(),
+        event_log_entries=(),
+    )
+    write_patch_attempt_metadata(paths, record)
 
     write_tasks_run(paths, ["seal", "break"])
     with open(paths.tasks_path, "r", encoding="utf-8") as fh:
         assert json.load(fh) == ["seal", "break"]
+    metadata = json.load(open(paths.metadata_path, "r", encoding="utf-8"))
+    assert metadata["attachments"]["tasks_run"]["filename"] == paths.tasks_path.name
 
     with pytest.raises(ValueError):
         write_tasks_run(paths, ["ok", " "])

@@ -51,4 +51,5 @@ All new code should use `ensure_structured_object_roots` + `StructuredPathHelper
 ### Persistence helpers
 
 - `acq4.data.structured.storage.write_{cell,patch_attempt}_metadata(...)` writes JSON atomically (temp file + `os.replace`) with deterministic ordering. The paired `read_*` helpers hydrate `CellRecord`/`PatchAttemptRecord`.
-- Attachment helpers (`write_cellfie_image`, `write_event_log`, `write_tasks_run`) stream data into the canonical filenames, computing SHA-256 checksums + byte counts and returning `AttachmentInfo` so callers can log or persist integrity metadata alongside the records.
+- Attachment helpers (`write_cellfie_image`, `write_event_log`, `write_tasks_run`) stream data into the canonical filenames, computing SHA-256 checksums + byte counts and returning `AttachmentInfo`. The helpers also persist an `attachments` manifest inside `metadata.json` so loaders know the expected filename/hash/size for each blob.
+- Loader helpers (`load_cell`, `load_patch_attempt`) verify attachments against the manifest and rehydrate payloads (returning the typed record plus `AttachmentPayload` objects). Corrupted/missing files raise `AttachmentIntegrityError` with descriptive context, enabling call-sites to surface actionable errors to operators.
