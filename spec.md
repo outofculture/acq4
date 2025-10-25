@@ -53,4 +53,16 @@ All new code should use `ensure_structured_object_roots` + `StructuredPathHelper
 - `acq4.data.structured.storage.write_{cell,patch_attempt}_metadata(...)` writes JSON atomically (temp file + `os.replace`) with deterministic ordering. The paired `read_*` helpers hydrate `CellRecord`/`PatchAttemptRecord`.
 - Attachment helpers (`write_cellfie_image`, `write_event_log`, `write_tasks_run`) stream data into the canonical filenames, computing SHA-256 checksums + byte counts and returning `AttachmentInfo`. The helpers also persist an `attachments` manifest inside `metadata.json` so loaders know the expected filename/hash/size for each blob.
 - Loader helpers (`load_cell`, `load_patch_attempt`) verify attachments against the manifest and rehydrate payloads (returning the typed record plus `AttachmentPayload` objects). Corrupted/missing files raise `AttachmentIntegrityError` with descriptive context, enabling call-sites to surface actionable errors to operators.
-- `StructuredObjectStore` (`acq4.data.structured.store`) wraps all of the above, providing `create_*`, `get_*`, and `list_*` helpers that enforce UUID collisions, validate referenced cells before creating patch attempts, and route writes through the persistence/loader layers. This becomes the single entry point for acquisition modules until more advanced indexing (D2/D3) lands.
+- `StructuredObjectStore` (`acq4.data.structured.store`) wraps all of the above, providing `create_*`, `get_*`, and `list_*` helpers that enforce UUID collisions, validate referenced cells before creating patch attempts, and route writes through the persistence/loader layers. The store serializes threaded callers with an internal `RLock`, uses per-record `.lock` files so concurrent processes can’t clobber directories (raising `StructuredLockError` on timeout), and exposes `stream_patch_attempt(uuid)` which returns a `StreamingPatchLogger` for acquisition modules to append multipatch events/tasks incrementally.
+
+## Demo Integration & Metrics
+
+Run `python -m acq4.integration.structured_patch_demo --output <path>` to see the full workflow: the script creates a demo cell, streams a synthetic patch attempt with event log entries + tasks via `StructuredObjectStore.stream_patch_attempt`, and leaves behind a fully-populated `structured_objects/` tree for inspection. The script also prints the `acq4.data.structured.metrics.snapshot()` so you can observe counters such as `cells_created_total`, `patch_attempts_created_total`, and streaming session counts.
+
+Automated coverage lives in `tests/test_structured_integration.py`, which creates a cell + patch attempt, streams additional events via the store, and asserts the linkage and metrics counters are correct.
+
+## End-to-End Scenario
+
+1. Run `python -m acq4.integration.structured_patch_demo --output <path>` to generate a demo dataset.
+2. Execute `pytest tests/test_structured_integration.py tests/test_structured_patch_demo.py` to validate the end-to-end flow (cell creation → patch attempt streaming → metrics snapshot).
+3. Inspect `<path>/structured_objects/` to confirm the filesystem contract documented above.
