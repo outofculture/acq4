@@ -160,6 +160,42 @@ conda activate "$env_name"
 echo "Installing ACQ4 in development mode..."
 pip install -e .
 
+# Install dependencies from dependencies/ subdirectories
+if [[ -d "$ACQ4_ROOT/dependencies" ]]; then
+    # Find subdirectories in dependencies/
+    dep_subdirs=($(find "$ACQ4_ROOT/dependencies" -mindepth 1 -maxdepth 1 -type d))
+
+    if [[ ${#dep_subdirs[@]} -gt 0 ]]; then
+        echo
+        echo -e "${YELLOW}=== Local Dependencies ===${NC}"
+        echo "Found ${#dep_subdirs[@]} subdirectories in dependencies/:"
+        for subdir in "${dep_subdirs[@]}"; do
+            echo "  - $(basename "$subdir")"
+        done
+        echo
+
+        if ask_yes_no "Install these local dependencies in editable mode?" "y"; then
+            echo "Installing local dependencies..."
+            for subdir in "${dep_subdirs[@]}"; do
+                echo "Installing $(basename "$subdir") from $subdir..."
+                if [[ -f "$subdir/setup.py" ]] || [[ -f "$subdir/pyproject.toml" ]]; then
+                    pip install -e "$subdir"
+                    if [[ $? -eq 0 ]]; then
+                        echo -e "${GREEN}  → Successfully installed $(basename "$subdir")${NC}"
+                    else
+                        echo -e "${RED}  → Failed to install $(basename "$subdir")${NC}"
+                    fi
+                else
+                    echo -e "${YELLOW}  → Skipped $(basename "$subdir") (no setup.py or pyproject.toml found)${NC}"
+                fi
+                echo
+            done
+        else
+            echo "Skipped local dependencies installation."
+        fi
+    fi
+fi
+
 # Install selected non_dev dependencies
 if [[ ${#selected_non_dev[@]} -gt 0 ]]; then
     echo "Installing non_dev dependencies..."

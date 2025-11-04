@@ -196,6 +196,59 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+REM Install dependencies from dependencies\ subdirectories
+if exist "%ACQ4_ROOT%\dependencies\" (
+    echo.
+    echo === Local Dependencies ===
+    echo Found dependencies directory. Scanning for subdirectories...
+
+    set "dep_count=0"
+    set "dep_list="
+
+    for /d %%d in ("%ACQ4_ROOT%\dependencies\*") do (
+        set /a dep_count+=1
+        echo   - %%~nxd
+        if "!dep_list!"=="" (
+            set "dep_list=%%d"
+        ) else (
+            set "dep_list=!dep_list!|%%d"
+        )
+    )
+
+    if !dep_count! gtr 0 (
+        echo.
+        set /p "install_deps=Install these !dep_count! local dependencies in editable mode? [Y/n]: "
+        if "!install_deps!"=="" set "install_deps=y"
+
+        if /i "!install_deps!"=="y" (
+            echo Installing local dependencies...
+            for %%d in ("!dep_list:|=" "!") do (
+                echo Installing %%~nxd from %%d...
+                if exist "%%d\setup.py" (
+                    pip install -e "%%d"
+                    if !errorlevel! equ 0 (
+                        echo   - Successfully installed %%~nxd
+                    ) else (
+                        echo   - Failed to install %%~nxd
+                    )
+                ) else if exist "%%d\pyproject.toml" (
+                    pip install -e "%%d"
+                    if !errorlevel! equ 0 (
+                        echo   - Successfully installed %%~nxd
+                    ) else (
+                        echo   - Failed to install %%~nxd
+                    )
+                ) else (
+                    echo   - Skipped %%~nxd ^(no setup.py or pyproject.toml found^)
+                )
+                echo.
+            )
+        ) else (
+            echo Skipped local dependencies installation.
+        )
+    )
+)
+
 REM Install selected non_dev dependencies
 if not "%selected_non_dev%"=="" (
     echo Installing non_dev dependencies...
