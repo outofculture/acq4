@@ -15,6 +15,8 @@ useful for:
 Usage:
     python home_devices.py --config myrig.cfg Stage Manipulator1 Manipulator2
     python home_devices.py -c myrig.cfg --log-level INFO Stage
+    python home_devices.py -c myrig.cfg --speed 0.001 Stage  # 1 mm/s
+    python home_devices.py -c myrig.cfg --speed slow --dry-run Stage
 
 The script will:
 1. Load only the specified devices and any parent devices they depend on
@@ -47,7 +49,9 @@ def make_arg_parser():
 Examples:
   %(prog)s --config myrig.cfg Stage Manipulator1
   %(prog)s -c myrig.cfg --log-level INFO Stage Manipulator1 Manipulator2
-  %(prog)s --config myrig.cfg --disable DAQ Stage
+  %(prog)s -c myrig.cfg --speed 0.001 Stage  # Home at 1 mm/s
+  %(prog)s -c myrig.cfg --speed slow --timeout 120 Stage
+  %(prog)s -c myrig.cfg --dry-run Stage  # See what would happen
 
 This script loads only the specified devices and their ancestors,
 then sends each device to its home position using home() or goHome().
@@ -82,19 +86,6 @@ then sends each device to its home position using home() or goHome().
         default='WARNING'
     )
 
-    # Device filtering
-    parser.add_argument(
-        '--disable', '-d',
-        help='Disable the specified device',
-        action='append',
-        default=[]
-    )
-    parser.add_argument(
-        '--disable-all', '-D',
-        help='Disable all devices (useful with selective loading)',
-        action='store_true'
-    )
-
     # Error handling
     parser.add_argument(
         '--exit-on-error', '-x',
@@ -105,9 +96,8 @@ then sends each device to its home position using home() or goHome().
     # Behavioral options
     parser.add_argument(
         '--speed',
-        help='Speed setting for homing (fast or slow)',
-        default='fast',
-        choices=['fast', 'slow']
+        help='Speed setting for homing: "fast", "slow", or a numeric value in m/s',
+        default='fast'
     )
     parser.add_argument(
         '--timeout',
@@ -131,8 +121,8 @@ def home_device(device, speed='fast', timeout=60.0, dry_run=False):
     ----------
     device : Device
         The device instance to home
-    speed : str
-        Speed parameter to pass to homing method ('fast' or 'slow')
+    speed : str or float
+        Speed parameter to pass to homing method ('fast', 'slow', or numeric value in m/s)
     timeout : float
         Maximum time to wait for homing to complete (seconds)
     dry_run : bool
@@ -161,12 +151,21 @@ def home_device(device, speed='fast', timeout=60.0, dry_run=False):
         return True, f"[DRY RUN] Would call {dev_name}.{method_name}()"
 
     try:
+        # Parse speed parameter - convert to float if it looks numeric
+        parsed_speed = speed
+        if isinstance(speed, str):
+            try:
+                parsed_speed = float(speed)
+            except ValueError:
+                # Keep as string ('fast' or 'slow')
+                pass
+
         # Call the homing method
         # Some methods (like Stage.goHome) accept a speed parameter
         import inspect
         sig = inspect.signature(home_method)
         if 'speed' in sig.parameters:
-            result = home_method(speed=speed)
+            result = home_method(speed=parsed_speed)
         else:
             result = home_method()
 
@@ -209,8 +208,6 @@ def main():
     logger.info("Creating Manager instance...")
     manager = Manager()
     manager.exitOnError = args.exit_on_error
-    manager.disableDevs = args.disable
-    manager.disableAllDevs = args.disable_all
 
     # Read configuration
     logger.info(f"Reading configuration from {args.config}...")
