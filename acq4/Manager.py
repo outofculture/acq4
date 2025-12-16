@@ -439,6 +439,134 @@ class Manager(Qt.QObject):
         self.devices[name] = dev  # just to prevent device being collected
         return dev
 
+    def loadDevicesSelective(self, deviceNames):
+        """Load only the specified devices and their parent devices (ancestors).
+
+        This method provides selective device instantiation, loading only the requested
+        devices and any parent devices they depend on, rather than loading all devices
+        defined in the configuration.
+
+        This is useful for:
+        - Command-line scripts that only need specific devices (e.g., homing devices)
+        - Reducing startup time when only a subset of hardware is needed
+        - Testing individual devices without loading the entire system
+
+        Parameters
+        ----------
+        deviceNames : list of str
+            Names of devices to load. Parent devices will be loaded automatically.
+
+        Returns
+        -------
+        loadedDevices : dict
+            Dictionary mapping device names to device instances for all loaded devices
+            (including parents)
+
+        Example
+        -------
+        >>> manager = Manager()
+        >>> manager.readConfig('default.cfg')
+        >>> # Load only Pipette1 and its parent Manipulator1
+        >>> devices = manager.loadDevicesSelective(['Pipette1'])
+        """
+        if 'devices' not in self.config:
+            logger.warning("No devices defined in configuration")
+            return {}
+
+        deviceConfigs = self.config['devices']
+
+        # Build dependency graph: for each device, find its parent
+        def getParentDevice(devName):
+            """Get the parent device name for a given device, or None."""
+            if devName not in deviceConfigs:
+                return None
+            conf = deviceConfigs[devName]
+            if 'parentDevice' in conf:
+                parent = conf['parentDevice']
+                if isinstance(parent, str):
+                    return parent
+                elif isinstance(parent, dict) and 'name' in parent:
+                    return parent['name']
+            return None
+
+        # Trace ancestry for each requested device
+        devicesToLoad = set()
+        for devName in deviceNames:
+            if devName not in deviceConfigs:
+                logger.warning(f"Device '{devName}' not found in configuration")
+                continue
+
+            # Walk up the parent chain
+            current = devName
+            while current is not None:
+                if current in devicesToLoad:
+                    break  # already processed this device
+                devicesToLoad.add(current)
+                current = getParentDevice(current)
+
+        # Topologically sort devices so parents are loaded before children
+        def topologicalSort(devices):
+            """Sort devices so parents come before children."""
+            sorted_devices = []
+            remaining = set(devices)
+
+            while remaining:
+                # Find devices with no remaining parents
+                ready = []
+                for dev in remaining:
+                    parent = getParentDevice(dev)
+                    if parent is None or parent not in remaining:
+                        ready.append(dev)
+
+                if not ready:
+                    # Circular dependency or missing parent
+                    logger.error(f"Circular dependency or missing parent in devices: {remaining}")
+                    # Just add them in arbitrary order
+                    ready = list(remaining)
+
+                # Sort alphabetically for deterministic ordering
+                ready.sort()
+                sorted_devices.extend(ready)
+                remaining -= set(ready)
+
+            return sorted_devices
+
+        orderedDevices = topologicalSort(devicesToLoad)
+
+        logger.info(f"Loading {len(orderedDevices)} devices (including ancestors): {orderedDevices}")
+
+        # Load devices in order
+        loadedDevices = {}
+        for devName in orderedDevices:
+            if devName in self.devices:
+                logger.info(f"Device '{devName}' already loaded, skipping")
+                loadedDevices[devName] = self.devices[devName]
+                continue
+
+            if self.disableAllDevs or devName in self.disableDevs:
+                logger.info(f"Ignoring device '{devName}' -- disabled by request")
+                continue
+
+            logger.info(f"=== Configuring device '{devName}' ===")
+            try:
+                conf = deviceConfigs[devName]
+                try:
+                    driverName = conf['driver']
+                except KeyError as exc:
+                    raise KeyError(f"No driver specified for device {devName}") from exc
+                if 'config' in conf:  # for backward compatibility
+                    conf = conf['config']
+                dev = self.loadDevice(driverName, conf, devName)
+                loadedDevices[devName] = dev
+            except Exception:
+                if self.exitOnError:
+                    raise
+                else:
+                    logger.exception(f"Error configuring device {devName}")
+
+        logger.info("=== Selective device configuration complete ===")
+        return loadedDevices
+
     def getDevice(self, name):
         """Return a device instance given its name.
         """
