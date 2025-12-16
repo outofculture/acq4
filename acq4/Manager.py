@@ -209,8 +209,17 @@ class Manager(Qt.QObject):
         else:
             return os.path.expanduser('~/.local/acq4')
 
-    def readConfig(self, configFile):
-        """Read configuration file, create device objects, add devices to list"""
+    def readConfig(self, configFile, loadDevices=True):
+        """Read configuration file, optionally create device objects.
+
+        Parameters
+        ----------
+        configFile : str
+            Path to configuration file
+        loadDevices : bool
+            If True (default), load all devices defined in config.
+            If False, parse config but don't instantiate devices (useful for selective loading).
+        """
         logger.info(f"============= Starting Manager configuration from {configFile} =================")
         ns = {
             'hostname': socket.gethostname(),
@@ -221,7 +230,7 @@ class Manager(Qt.QObject):
         self.config.update(cfg)
 
         ## read modules, devices, and stylesheet out of config
-        self.configure(self.config)
+        self.configure(self.config, loadDevices=loadDevices)
 
         self.configFile = configFile
         logger.info("============= Manager configuration complete =================")
@@ -256,14 +265,31 @@ class Manager(Qt.QObject):
             sys.path.pop(0)
         return globs
 
-    def configure(self, cfg):
-        """Load the devices, modules, stylesheet, and storageDir defined in cfg"""
+    def configure(self, cfg, loadDevices=True):
+        """Load the devices, modules, stylesheet, and storageDir defined in cfg.
 
-        self._loadConfig(cfg)
+        Parameters
+        ----------
+        cfg : dict
+            Configuration dictionary
+        loadDevices : bool
+            If True (default), load all devices defined in config.
+            If False, skip device loading (useful for selective loading).
+        """
+        self._loadConfig(cfg, loadDevices=loadDevices)
 
         self.sigConfigChanged.emit()
 
-    def _loadConfig(self, cfg):
+    def _loadConfig(self, cfg, loadDevices=True):
+        """Load configuration, optionally skipping device instantiation.
+
+        Parameters
+        ----------
+        cfg : dict
+            Configuration dictionary
+        loadDevices : bool
+            If True (default), load all devices. If False, skip devices section.
+        """
         # Handle custom import prior to loading devices
         if 'imports' in cfg:
             try:
@@ -288,6 +314,11 @@ class Manager(Qt.QObject):
 
                 ## configure new devices
                 elif key == 'devices':
+                    if not loadDevices:
+                        # Config parsed but devices not loaded - skip this section
+                        logger.info("=== Skipping device loading (loadDevices=False) ===")
+                        continue
+
                     for k in cfg['devices']:
                         if self.disableAllDevs or k in self.disableDevs:
                             logger.info(f"    --> Ignoring device '{k}' -- disabled by request")
@@ -365,7 +396,7 @@ class Manager(Qt.QObject):
 
                 elif key == 'misc':
                     # Let's start moving things out of the top level, but stay backwards compatible
-                    self._loadConfig(cfg[key])
+                    self._loadConfig(cfg[key], loadDevices=loadDevices)
 
             except:
                 if self.exitOnError:

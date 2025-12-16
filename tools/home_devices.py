@@ -209,11 +209,11 @@ def main():
     manager = Manager()
     manager.exitOnError = args.exit_on_error
 
-    # Read configuration
+    # Read configuration (parse only, don't load devices yet)
     logger.info(f"Reading configuration from {args.config}...")
     import os
     manager.configDir = os.path.dirname(args.config)
-    manager.readConfig(args.config)
+    manager.readConfig(args.config, loadDevices=False)
 
     # Load only the specified devices and their ancestors
     logger.info(f"Loading devices: {args.devices}")
