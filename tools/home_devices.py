@@ -34,7 +34,7 @@ from collections import OrderedDict
 
 # Import acq4 components
 import acq4
-from acq4.Manager import Manager
+from acq4.Manager import Manager, parse_config, filter_devices
 from acq4.logging_config import setup_logging
 
 
@@ -203,25 +203,34 @@ def main():
         logger.info("DRY RUN MODE - no devices will actually be homed")
     logger.info("="*70)
 
-    # Create Manager instance without GUI
-    # Note: We don't use Manager.runFromCommandLine() because that starts modules
-    logger.info("Creating Manager instance...")
+    # Parse config file (pure function, no side effects)
+    logger.info(f"Parsing configuration from {args.config}...")
+    try:
+        config, configDir = parse_config(args.config)
+    except Exception as e:
+        logger.error(f"Failed to parse config: {e}", exc_info=True)
+        return 1
+
+    # Manipulate config: filter to only requested devices and their ancestors
+    logger.info(f"Filtering config to devices: {args.devices}")
+    config = filter_devices(config, args.devices)
+
+    # Create Manager and configure with the filtered config
+    logger.info("Creating and configuring Manager...")
     manager = Manager()
     manager.exitOnError = args.exit_on_error
+    manager.configDir = configDir
+    manager.configFile = args.config
+    manager.config.update(config)
 
-    # Read configuration (parse only, don't load devices yet)
-    logger.info(f"Reading configuration from {args.config}...")
-    import os
-    manager.configDir = os.path.dirname(args.config)
-    manager.readConfig(args.config, loadDevices=False)
-
-    # Load only the specified devices and their ancestors
-    logger.info(f"Loading devices: {args.devices}")
     try:
-        loaded_devices = manager.loadDevicesSelective(args.devices)
+        manager.configure(config)
     except Exception as e:
-        logger.error(f"Failed to load devices: {e}", exc_info=True)
+        logger.error(f"Failed to configure Manager: {e}", exc_info=True)
         return 1
+
+    # Get the loaded devices
+    loaded_devices = {name: manager.getDevice(name) for name in args.devices if name in manager.listDevices()}
 
     if not loaded_devices:
         logger.error("No devices were loaded successfully")

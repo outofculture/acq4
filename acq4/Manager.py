@@ -38,6 +38,133 @@ setup_logging(TEMP_LOG, gui=False, console_level=logging.DEBUG)
 logger = get_logger()
 
 
+def parse_config(configFile):
+    """Parse an ACQ4 configuration file and return the config dictionary.
+
+    This is a pure function that reads and parses the config file without
+    any side effects. The returned dict can be manipulated before being
+    passed to Manager.configure().
+
+    Parameters
+    ----------
+    configFile : str
+        Path to configuration file
+
+    Returns
+    -------
+    config : OrderedDict
+        Parsed configuration dictionary
+    configDir : str
+        Directory containing the config file
+
+    Example
+    -------
+    >>> config, configDir = parse_config('default.cfg')
+    >>> # Manipulate config as needed
+    >>> config = filter_devices(config, ['Stage', 'Manipulator1'])
+    >>> # Then configure Manager
+    >>> manager = Manager()
+    >>> manager.configDir = configDir
+    >>> manager.configure(config)
+    """
+    logger.info(f"============= Parsing configuration from {configFile} =================")
+    ns = {
+        'hostname': socket.gethostname(),
+        'username': getpass.getuser(),
+        'environ': os.environ,
+    }
+    cfg = configfile.readConfigFile(configFile, **ns)
+    configDir = os.path.dirname(configFile)
+    logger.info(f"============= Configuration parsed =================")
+    return cfg, configDir
+
+
+def filter_devices(config, deviceNames):
+    """Filter config to include only specified devices and their ancestors.
+
+    This modifies the config dict in place, removing all device definitions
+    except those in deviceNames and their parent devices.
+
+    Parameters
+    ----------
+    config : dict
+        Configuration dictionary (will be modified in place)
+    deviceNames : list of str
+        Device names to keep
+
+    Returns
+    -------
+    config : dict
+        The modified config dict (same object as input)
+    """
+    if 'devices' not in config:
+        return config
+
+    deviceConfigs = config['devices']
+
+    def getParentDevice(devName):
+        """Get the parent device name for a given device, or None."""
+        if devName not in deviceConfigs:
+            return None
+        conf = deviceConfigs[devName]
+        if 'parentDevice' in conf:
+            parent = conf['parentDevice']
+            if isinstance(parent, str):
+                return parent
+            elif isinstance(parent, dict) and 'name' in parent:
+                return parent['name']
+        return None
+
+    # Trace ancestry for each requested device
+    devicesToKeep = set()
+    for devName in deviceNames:
+        if devName not in deviceConfigs:
+            logger.warning(f"Device '{devName}' not found in configuration")
+            continue
+
+        # Walk up the parent chain
+        current = devName
+        while current is not None:
+            if current in devicesToKeep:
+                break  # already processed this device
+            devicesToKeep.add(current)
+            current = getParentDevice(current)
+
+    # Remove devices not in the keep set
+    devicesToRemove = set(deviceConfigs.keys()) - devicesToKeep
+    for devName in devicesToRemove:
+        del deviceConfigs[devName]
+
+    logger.info(f"Filtered config to {len(devicesToKeep)} devices: {sorted(devicesToKeep)}")
+    return config
+
+
+def remove_disabled_devices(config, disabledDevices):
+    """Remove disabled devices from config.
+
+    Parameters
+    ----------
+    config : dict
+        Configuration dictionary (will be modified in place)
+    disabledDevices : list of str
+        Device names to remove
+
+    Returns
+    -------
+    config : dict
+        The modified config dict (same object as input)
+    """
+    if 'devices' not in config or not disabledDevices:
+        return config
+
+    for devName in disabledDevices:
+        if devName in config['devices']:
+            logger.info(f"Removing disabled device '{devName}' from config")
+            del config['devices'][devName]
+
+    return config
+
+
 def __reload__(old):
     Manager.CREATED = old['Manager'].CREATED
     Manager.single = old['Manager'].single
@@ -101,8 +228,6 @@ class Manager(Qt.QObject):
         self.exitOnError = False
         self.gui = None
         self.shortcuts = []
-        self.disableDevs = []
-        self.disableAllDevs = False
         self.alreadyQuit = False
         self.taskLock = Mutex(Qt.QMutex.Recursive)
         self._folderTypes = None
@@ -140,14 +265,33 @@ class Manager(Qt.QObject):
                 )
 
     def initFromCommandLine(self, args: argparse.Namespace):
+        """Initialize Manager from command-line arguments.
+
+        This parses the config file, manipulates it based on command-line args
+        (like --disable), then configures the Manager with the modified config.
+        """
         self.exitOnError = args.exit_on_error
-        self.disableDevs = args.disable or []
-        self.disableAllDevs = args.disable_all
         self._consoleLogLevel = getattr(logging, args.log_level.upper(), logging.WARNING)
         self._rootLogLevel = getattr(logging, args.root_log_level.upper(), logging.DEBUG)
 
-        self.configDir = os.path.dirname(args.config)
-        self.readConfig(args.config)
+        # Parse config file (without side effects)
+        config, configDir = parse_config(args.config)
+        self.configDir = configDir
+        self.configFile = args.config
+
+        # Manipulate config based on command-line args
+        if args.disable_all:
+            # Remove all devices
+            if 'devices' in config:
+                logger.info("Removing all devices from config (--disable-all)")
+                config['devices'] = OrderedDict()
+        elif args.disable:
+            # Remove specific devices
+            config = remove_disabled_devices(config, args.disable)
+
+        # Store config and configure Manager
+        self.config.update(config)
+        self.configure(self.config)
 
         ## Act on options if they were specified..
         try:
@@ -209,30 +353,22 @@ class Manager(Qt.QObject):
         else:
             return os.path.expanduser('~/.local/acq4')
 
-    def readConfig(self, configFile, loadDevices=True):
-        """Read configuration file, optionally create device objects.
+    def readConfig(self, configFile):
+        """Read and apply configuration file.
+
+        This is a convenience method that wraps parse_config() + configure().
+        For more control over config manipulation, use parse_config() directly.
 
         Parameters
         ----------
         configFile : str
             Path to configuration file
-        loadDevices : bool
-            If True (default), load all devices defined in config.
-            If False, parse config but don't instantiate devices (useful for selective loading).
         """
-        logger.info(f"============= Starting Manager configuration from {configFile} =================")
-        ns = {
-            'hostname': socket.gethostname(),
-            'username': getpass.getuser(),
-            'environ': os.environ,
-        }
-        cfg = configfile.readConfigFile(configFile, **ns)
-        self.config.update(cfg)
-
-        ## read modules, devices, and stylesheet out of config
-        self.configure(self.config, loadDevices=loadDevices)
-
+        config, configDir = parse_config(configFile)
+        self.configDir = configDir
         self.configFile = configFile
+        self.config.update(config)
+        self.configure(self.config)
         logger.info("============= Manager configuration complete =================")
 
     def exec_(self, pyfile):
@@ -265,30 +401,25 @@ class Manager(Qt.QObject):
             sys.path.pop(0)
         return globs
 
-    def configure(self, cfg, loadDevices=True):
+    def configure(self, cfg):
         """Load the devices, modules, stylesheet, and storageDir defined in cfg.
 
         Parameters
         ----------
         cfg : dict
             Configuration dictionary
-        loadDevices : bool
-            If True (default), load all devices defined in config.
-            If False, skip device loading (useful for selective loading).
         """
-        self._loadConfig(cfg, loadDevices=loadDevices)
+        self._loadConfig(cfg)
 
         self.sigConfigChanged.emit()
 
-    def _loadConfig(self, cfg, loadDevices=True):
-        """Load configuration, optionally skipping device instantiation.
+    def _loadConfig(self, cfg):
+        """Load configuration from a dictionary.
 
         Parameters
         ----------
         cfg : dict
             Configuration dictionary
-        loadDevices : bool
-            If True (default), load all devices. If False, skip devices section.
         """
         # Handle custom import prior to loading devices
         if 'imports' in cfg:
@@ -314,15 +445,7 @@ class Manager(Qt.QObject):
 
                 ## configure new devices
                 elif key == 'devices':
-                    if not loadDevices:
-                        # Config parsed but devices not loaded - skip this section
-                        logger.info("=== Skipping device loading (loadDevices=False) ===")
-                        continue
-
                     for k in cfg['devices']:
-                        if self.disableAllDevs or k in self.disableDevs:
-                            logger.info(f"    --> Ignoring device '{k}' -- disabled by request")
-                            continue
                         logger.info(f"  === Configuring device '{k}' ===")
                         try:
                             conf = cfg['devices'][k]
@@ -396,7 +519,7 @@ class Manager(Qt.QObject):
 
                 elif key == 'misc':
                     # Let's start moving things out of the top level, but stay backwards compatible
-                    self._loadConfig(cfg[key], loadDevices=loadDevices)
+                    self._loadConfig(cfg[key])
 
             except:
                 if self.exitOnError:
@@ -469,134 +592,6 @@ class Manager(Qt.QObject):
         dev = devclass(self, conf, name)
         self.devices[name] = dev  # just to prevent device being collected
         return dev
-
-    def loadDevicesSelective(self, deviceNames):
-        """Load only the specified devices and their parent devices (ancestors).
-
-        This method provides selective device instantiation, loading only the requested
-        devices and any parent devices they depend on, rather than loading all devices
-        defined in the configuration.
-
-        This is useful for:
-        - Command-line scripts that only need specific devices (e.g., homing devices)
-        - Reducing startup time when only a subset of hardware is needed
-        - Testing individual devices without loading the entire system
-
-        Parameters
-        ----------
-        deviceNames : list of str
-            Names of devices to load. Parent devices will be loaded automatically.
-
-        Returns
-        -------
-        loadedDevices : dict
-            Dictionary mapping device names to device instances for all loaded devices
-            (including parents)
-
-        Example
-        -------
-        >>> manager = Manager()
-        >>> manager.readConfig('default.cfg')
-        >>> # Load only Pipette1 and its parent Manipulator1
-        >>> devices = manager.loadDevicesSelective(['Pipette1'])
-        """
-        if 'devices' not in self.config:
-            logger.warning("No devices defined in configuration")
-            return {}
-
-        deviceConfigs = self.config['devices']
-
-        # Build dependency graph: for each device, find its parent
-        def getParentDevice(devName):
-            """Get the parent device name for a given device, or None."""
-            if devName not in deviceConfigs:
-                return None
-            conf = deviceConfigs[devName]
-            if 'parentDevice' in conf:
-                parent = conf['parentDevice']
-                if isinstance(parent, str):
-                    return parent
-                elif isinstance(parent, dict) and 'name' in parent:
-                    return parent['name']
-            return None
-
-        # Trace ancestry for each requested device
-        devicesToLoad = set()
-        for devName in deviceNames:
-            if devName not in deviceConfigs:
-                logger.warning(f"Device '{devName}' not found in configuration")
-                continue
-
-            # Walk up the parent chain
-            current = devName
-            while current is not None:
-                if current in devicesToLoad:
-                    break  # already processed this device
-                devicesToLoad.add(current)
-                current = getParentDevice(current)
-
-        # Topologically sort devices so parents are loaded before children
-        def topologicalSort(devices):
-            """Sort devices so parents come before children."""
-            sorted_devices = []
-            remaining = set(devices)
-
-            while remaining:
-                # Find devices with no remaining parents
-                ready = []
-                for dev in remaining:
-                    parent = getParentDevice(dev)
-                    if parent is None or parent not in remaining:
-                        ready.append(dev)
-
-                if not ready:
-                    # Circular dependency or missing parent
-                    logger.error(f"Circular dependency or missing parent in devices: {remaining}")
-                    # Just add them in arbitrary order
-                    ready = list(remaining)
-
-                # Sort alphabetically for deterministic ordering
-                ready.sort()
-                sorted_devices.extend(ready)
-                remaining -= set(ready)
-
-            return sorted_devices
-
-        orderedDevices = topologicalSort(devicesToLoad)
-
-        logger.info(f"Loading {len(orderedDevices)} devices (including ancestors): {orderedDevices}")
-
-        # Load devices in order
-        loadedDevices = {}
-        for devName in orderedDevices:
-            if devName in self.devices:
-                logger.info(f"Device '{devName}' already loaded, skipping")
-                loadedDevices[devName] = self.devices[devName]
-                continue
-
-            if self.disableAllDevs or devName in self.disableDevs:
-                logger.info(f"Ignoring device '{devName}' -- disabled by request")
-                continue
-
-            logger.info(f"=== Configuring device '{devName}' ===")
-            try:
-                conf = deviceConfigs[devName]
-                try:
-                    driverName = conf['driver']
-                except KeyError as exc:
-                    raise KeyError(f"No driver specified for device {devName}") from exc
-                if 'config' in conf:  # for backward compatibility
-                    conf = conf['config']
-                dev = self.loadDevice(driverName, conf, devName)
-                loadedDevices[devName] = dev
-            except Exception:
-                if self.exitOnError:
-                    raise
-                else:
-                    logger.exception(f"Error configuring device {devName}")
-
-        logger.info("=== Selective device configuration complete ===")
-        return loadedDevices
 
     def getDevice(self, name):
         """Return a device instance given its name.
