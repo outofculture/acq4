@@ -76,8 +76,6 @@ class Microscope(Device, OptomechDevice):
         self.selectedObjectives = collections.OrderedDict(
             [(i, list(self.objectives[i].values())[0]) for i in self.objectives]
         )
-        for obj in self.selectedObjectives.values():
-            self.addSubdevice(obj)
 
         ## if there is a light source, configure it here
         if 'lightSource' in config:
@@ -134,7 +132,8 @@ class Microscope(Device, OptomechDevice):
         index = str(index)
         if index not in self.selectedObjectives:
             raise ValueError(
-                f"Requested invalid objective switch position: {index} (options are {', '.join(list(self.objectives.keys()))})"
+                f"Requested invalid objective switch position: {index} "
+                f"(options are {', '.join(list(self.objectives.keys()))})"
             )
 
         ## determine new objective, return early if there is no change
@@ -146,7 +145,7 @@ class Microscope(Device, OptomechDevice):
             if self.currentObjective == lastObj:
                 return
 
-        self.setCurrentSubdevice(self.currentObjective)
+        self.subdevice = self.currentObjective
         self.sigObjectiveChanged.emit((self.currentObjective, lastObj))
         self.sigGeometryChanged.emit(self)
 
@@ -195,22 +194,12 @@ class Microscope(Device, OptomechDevice):
         iface.objectiveChanged((self.currentObjective, None))
         return iface
 
-    def physicalTransform(self, subdev=None):
-        tr = TTransform(offset=self.deviceTransform().offset)
-        dev = self.getSubdevice(subdev)
-        if dev is None:
-            return tr
-        else:
-            return tr * dev.physicalTransform()
-
     def selectObjective(self, obj):
         ##Set the currently-active objective for a particular switch position
         ##This is _not_ the same as objectiveIndexChanged.
         index = obj.key()[0]
         with self.lock:
-            self.removeSubdevice(self.selectedObjectives[index])
             self.selectedObjectives[index] = obj
-            self.addSubdevice(obj)
         self.objectiveIndexChanged(self.currentSwitchPosition)  # update self.currentObjective, send signals (if needed)
         self.sigObjectiveListChanged.emit()
 
@@ -363,6 +352,7 @@ class Objective(Device, OptomechDevice):
     def __init__(self, config, scope, key):
         self._scope: Microscope = scope
         self._key = key
+        self.__physicalTransform = TTransform(dims=(3, 3))
         name = config['name']
 
         Device.__init__(self, scope.dm, config, name)
@@ -373,44 +363,30 @@ class Objective(Device, OptomechDevice):
         if 'scale' in config:
             self.setScale(config['scale'])
 
+    @property
+    def _physicalTransform(self):
+        # override so we can exclude scale from the physical transform
+        return self.__physicalTransform
+
     def getGeometry(self, name=None):
         return None
 
     def getGeometryForMicroscope(self, name):
         return super().getGeometry(name)
 
-    def physicalTransform(self, subdev=None):
-        tr = TTransform(offset=self.offset())
-        dev = self.getSubdevice(subdev)
-        if dev is None:
-            return tr
-        else:
-            return tr * dev.physicalTransform()
-
     def setOffset(self, pos):
-        tr = self.deviceTransform()
         if len(pos) < 3:
             pos = (pos[0], pos[1], 0)
-        tr.offset = pos
-        # TODO modify in place makes set redundant
-        self.setDeviceTransform(tr)
+        self.deviceOffset = self.deviceScale * np.asarray(pos)
+        self._physicalTransform.offset = pos
 
     def setScale(self, scale):
         if not hasattr(scale, '__len__'):
             scale = (scale, scale, 1)
         if len(scale) < 3:
             scale = (scale[0], scale[1], 1)
-
-        tr = self.deviceTransform()
-        tr.scale = scale
-        # TODO modify in place makes set redundant
-        self.setDeviceTransform(tr)
-
-    def offset(self):
-        return self.deviceTransform().offset
-
-    def scale(self):
-        return self.deviceTransform().scale
+        self.deviceScale = scale
+        # no scale on physical transform
 
     def key(self):
         return self._key
@@ -424,8 +400,8 @@ class Objective(Device, OptomechDevice):
 
     def __repr__(self):
         return (f"<Objective {self._scope.name()}.{self.name()} "
-                f"offset={self.offset()[0]:0.2g},{self.offset()[1]:0.2g} "
-                f"scale={self.scale()[0]:0.2g}>")
+                f"offset={self.deviceOffset[0]:0.2g},{self.deviceOffset[1]:0.2g} "
+                f"scale={self.deviceScale[0]:0.2g}>")
 
 
 class ScopeGUI(Qt.QWidget):
@@ -552,12 +528,12 @@ class ScopeGUI(Qt.QWidget):
             if callable(getattr(obj, "toPyObject", None)):
                 obj = obj.toPyObject()
 
-            offset = obj.offset()
+            offset = obj.deviceOffset
             xs.setValue(offset[0])
             ys.setValue(offset[1])
             zs.setValue(offset[2])
 
-            scale = obj.scale()
+            scale = obj.deviceScale
             xyss.setValue(scale[0])
             zss.setValue(scale[2])
 

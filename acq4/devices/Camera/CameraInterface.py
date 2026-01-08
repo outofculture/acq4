@@ -1,9 +1,10 @@
 import contextlib
+from functools import reduce
+from itertools import product
 
 import acq4.Manager as Manager
 import pyqtgraph as pg
 import pyqtgraph.dockarea as dockarea
-from acq4.devices.OptomechDevice import DeviceTreeItemGroup
 from acq4.modules.Camera import CameraModuleInterface
 from acq4.util import Qt
 from acq4.util.imaging import ImagingCtrl
@@ -38,7 +39,7 @@ class CameraInterface(CameraModuleInterface):
         w = Qt.QWidget()
         self.ui.setupUi(w)
 
-        # takes care of displaying image data, 
+        # takes care of displaying image data,
         # contrast & background subtraction user interfaces
         self.imagingCtrl = ImagingCtrl()
         self.frameDisplay = self.imagingCtrl.frameDisplay
@@ -52,7 +53,7 @@ class CameraInterface(CameraModuleInterface):
         self.widget.addDock(devDock, 'bottom', recDock)
         self.widget.addDock(dispDock, 'bottom', devDock)
         self.widget.addDock(bgDock, 'bottom', dispDock)
-        
+
         # Camera state variables
         self.cam = camera
         self.roi = None
@@ -90,12 +91,11 @@ class CameraInterface(CameraModuleInterface):
         self.setRegion()
 
         # Set up microscope objective borders
-        self.borders = CameraItemGroup(self.cam)
-        self.module.addItem(self.borders)
-        self.borders.setZValue(-1)
-        
+        self.borders = []
+        self._setupBorders()
+
         self.cam.sigGlobalTransformChanged.connect(self.globalTransformChanged)
-        
+
         self.globalTransformChanged()
 
         # initially set binning and exposure from camera state
@@ -143,7 +143,7 @@ class CameraInterface(CameraModuleInterface):
 
     def controlWidget(self):
         return self.widget
-        
+
     def openCamera(self, ind=0):
         try:
             camSize = self.cam.getParam('sensorSize')
@@ -168,23 +168,23 @@ class CameraInterface(CameraModuleInterface):
         ## if the camera is running, then this is taken care of in drawFrame to
         ## ensure that the image remains stationary on screen.
         if not self.cam.isRunning():
-            tr = self.cam.globalTransform().as_pyqtgraph().as2D()
+            tr = self.cam.globalTransform.as_pyqtgraph().as2D()
             self.updateTransform(tr)
 
     def imageUpdated(self, frame):
         # New image is displayed; update image transform
-        self.imageItem.setTransform(frame.frameTransform().as_pyqtgraph().as2D())
-        
+        self.imageItem.setTransform(frame.frameTransform.as_pyqtgraph().as2D())
+
         # Update viewport to correct for scope movement/scaling
-        tr = frame.deviceTransform().as_pyqtgraph().as2D()
+        tr = frame.deviceTransform.as_pyqtgraph().as2D()
         self.updateTransform(tr)
 
         self.imageItemGroup.setTransform(tr)
-            
+
     def updateTransform(self, tr):
         # update view for new transform such that sensor bounds remain stationary on screen.
         pos = tr.getTranslation()
-        
+
         scale = tr.getScale()
         if scale != self.lastCameraScale:
             anchor = self.view.mapViewToDevice(self.lastCameraPosition)
@@ -195,7 +195,7 @@ class CameraInterface(CameraModuleInterface):
             self.lastCameraScale = scale
         else:
             diff = pos - self.lastCameraPosition
-            
+
         self.view.translateBy(diff)
         self.lastCameraPosition = pos
         self.cameraItemGroup.setTransform(tr)
@@ -204,7 +204,7 @@ class CameraInterface(CameraModuleInterface):
         self.updateRegion()
 
     def updateRegion(self, autoRestart=True):
-        #self.clearFrameBuffer()
+        # self.clearFrameBuffer()
         r = self.roi.parentBounds()
         newRegion = [int(r.left()), int(r.top()), int(r.width()), int(r.height())]
         if self.region != newRegion:
@@ -233,7 +233,7 @@ class CameraInterface(CameraModuleInterface):
             'snap': self.imagingCtrl.saveFrameClicked,
             'start': self.imagingCtrl.acquireVideoClicked,
         }.get(action)
-        
+
         callback()
 
     def cameraStopped(self):
@@ -247,11 +247,11 @@ class CameraInterface(CameraModuleInterface):
 
     def setBinning(self, ind=None, autoRestart=True):
         """Set camera's binning value. If ind is specified, it is the index from binningCombo from which to grab the new binning value."""
-        #self.backgroundFrame = None
+        # self.backgroundFrame = None
         if ind is not None:
             self.binning = int(self.ui.binningCombo.itemText(ind))
         self.cam.setParam('binning', (self.binning, self.binning), autoRestart=autoRestart)
-        #self.clearFrameBuffer()
+        # self.clearFrameBuffer()
         ###self.updateRgnLabel()
 
     def setUiBinning(self, b, updateCamera=True):
@@ -277,7 +277,7 @@ class CameraInterface(CameraModuleInterface):
         if ps is None:
             return
 
-        m = self.cam.globalTransform().as_pyqtgraph().as2D()
+        m = self.cam.globalTransform.as_pyqtgraph().as2D()
         self.cameraItemGroup.setTransform(m)
 
     def setRegion(self, rgn=None):
@@ -299,7 +299,7 @@ class CameraInterface(CameraModuleInterface):
             self.setUiBinning(changes['binningX'], updateCamera=False)
         elif 'binning' in changes:
             self.setUiBinning(changes['binning'][0], updateCamera=False)
-        
+
         if 'region' in changes:
             with pg.SignalBlock(self.roi.sigRegionChangeFinished, self.regionWidgetChanged):
                 rgn = changes['region']
@@ -346,22 +346,27 @@ class CameraInterface(CameraModuleInterface):
         """
         return Qt.QRectF(*self.cam.getBoundary())
 
-
-class CameraItemGroup(DeviceTreeItemGroup):
-    def __init__(self, camera, includeSubdevices=True):
-        DeviceTreeItemGroup.__init__(self, device=camera, includeSubdevices=includeSubdevices)
-        
-    def makeGroup(self, dev, subdev):
-        grp = DeviceTreeItemGroup.makeGroup(self, dev, subdev)
-        if dev is self.device:
+    def _setupBorders(self):
+        devices = self.cam.ancestorDevices()
+        xforms = []
+        for dev in devices:
+            if hasattr(dev, 'listObjectives'):
+                xforms.append([dev.deviceTransformWithHypotheticalSubdevice(o) for o in dev.listObjectives()])
+            else:
+                xforms.append([dev.deviceTransform])
+        chains = product(*xforms)
+        for chain in chains:
+            tr = reduce(lambda a, b: a * b, chain[::-1])
             bound = Qt.QPainterPath()
-            bound.addRect(Qt.QRectF(*self.device.getBoundary(globalCoords=False)))
+            bound.addRect(Qt.QRectF(*self.cam.getBoundary(globalCoords=False)))
             bound = Qt.QGraphicsPathItem(bound)
-            bound.setParentItem(grp)
             bound.setPen(pg.mkPen(40, 150, 150))
-        return grp
-        
-        
+            self.module.addItem(bound)
+            bound.setTransform(tr.as_pyqtgraph().as2D())
+            self.borders.append(bound)
+            tr.add_change_callback(lambda change: bound.setTransform(tr.as_pyqtgraph().as2D()))
+
+
 class CamROI(pg.ROI):
     """Used for specifying the ROI for a camera to acquire from"""
     def __init__(self, size, parent=None):

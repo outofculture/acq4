@@ -473,7 +473,8 @@ class Pipette(Device, OptomechDevice):
             np.asarray([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]]),  # local
             np.asarray([[0, 0, 0], x, y, z]) + self.offset,  # parent
         )
-        self.setDeviceTransform(tr)
+        # TODO are we really gunna do this every time?
+        self.setBaseTransform(tr)
 
     def _directionChanged(self):
         """Orientation has changed"""

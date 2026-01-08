@@ -85,10 +85,12 @@ class Frame:
         """
         return self._data
 
+    @property
     def deviceTransform(self):
         """Return the transform that maps from imager device coordinates to global."""
         return self._info['deviceTransform']
 
+    @property
     def frameTransform(self):
         """Return the transform that maps from this frame's image coordinates
         to its imager device coordinates. This transform takes into account
@@ -96,6 +98,7 @@ class Frame:
         """
         return self._info['frameTransform']
 
+    @property
     def globalTransform(self):
         """Return the transform that maps this frame's image coordinates (row, col)
         to global coordinates (x, y, z). This is equivalent to (deviceTransform * frameTransform).
@@ -105,12 +108,12 @@ class Frame:
     def mapFromFrameToGlobal(self, obj):
         """Map *obj* from the frame's data coordinates to global coordinates.
         """
-        return self.globalTransform().map(obj)
+        return self.globalTransform.map(obj)
 
     def mapFromGlobalToFrame(self, obj):
         """Map *obj* from global coordinates to the frame's data coordinates.
         """
-        return self.globalTransform().inverse.map(obj)
+        return self.globalTransform.inverse.map(obj)
 
     @property
     def time(self):
@@ -199,5 +202,5 @@ class Frame:
             gradient.restoreState(contrast["gradient"])
             lut = gradient.getLookupTable(256 if data.dtype == np.uint8 else 512)
         item = ImageItem(data, levels=levels, lut=lut, removable=True)
-        item.setTransform(self.globalTransform().as_pyqtgraph().as2D())
+        item.setTransform(self.globalTransform.as_pyqtgraph().as2D())
         return item

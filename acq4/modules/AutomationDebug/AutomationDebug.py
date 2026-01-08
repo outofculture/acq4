@@ -627,14 +627,14 @@ class AutomationDebugWindow(Qt.QWidget):
     def _setTopLeft(self):
         cam = self.cameraDevice
         region = cam.getParam("region")
-        bound = cam.globalTransform().map((region[0], region[1], 0))
+        bound = cam.globalTransform.map((region[0], region[1], 0))
         self._xLeftSpin.setValue(bound[0])
         self._yTopSpin.setValue(bound[1])
 
     def _setBottomRight(self):
         cam = self.cameraDevice
         region = cam.getParam("region")
-        bound = cam.globalTransform().map((region[0] + region[2], region[1] + region[3], 0))
+        bound = cam.globalTransform.map((region[0] + region[2], region[1] + region[3], 0))
         self._xRightSpin.setValue(bound[0])
         self._yBottomSpin.setValue(bound[1])
 
@@ -665,7 +665,7 @@ class AutomationDebugWindow(Qt.QWidget):
             #     data = np.array(([[s.data().T for s in self._current_detection_stack]], [[s.data().T for s in self._current_classification_stack]]))
             # else:
             #     data = np.array([s.data().T for s in self._current_detection_stack])
-            # xform = SRT3DTransform.from_pyqtgraph(self._current_detection_stack[0].globalTransform()) * TransposeTransform((1, 0, 2))
+            # xform = self._current_detection_stack[0].globalTransform * TransposeTransform((1, 0, 2))
             # self._viewer = NeuronBoxViewer(data, neurons, xform)
             # self._viewer.show()
         finally:
@@ -811,9 +811,9 @@ class AutomationDebugWindow(Qt.QWidget):
         # results are returned [z_frame, img_row, img_row]
         # map back to global (x, y, z)
         transform = (
-            working_stack[0][0].globalTransform()
+            working_stack[0][0].globalTransform
             if isinstance(working_stack, tuple)
-            else working_stack[0].globalTransform()
+            else working_stack[0].globalTransform
         )
         globalPos = [Point(transform.map([row, col, zframe]), "global") for (zframe, row, col) in result]
 
@@ -838,7 +838,7 @@ class AutomationDebugWindow(Qt.QWidget):
             data = marr.asarray()
             info = marr.infoCopy()
 
-            live_frame_global_transform = base_frame.globalTransform()
+            live_frame_global_transform = base_frame.globalTransform
             live_frame_origin_global_xyz = np.array(
                 base_frame.mapFromFrameToGlobal([0, 0, 0])
             )

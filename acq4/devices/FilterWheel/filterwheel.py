@@ -176,7 +176,7 @@ class FilterWheel(Device, OptomechDevice):
 
     def _positionChanged(self, pos):
         filt = self.getFilter(pos)
-        self.setCurrentSubdevice(filt)
+        self.subdevice = filt
         self.sigFilterChanged.emit(self, filt)
         for k,indicator in self._slotIndicators.items():
             dev, key = indicator

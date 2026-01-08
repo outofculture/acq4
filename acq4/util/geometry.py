@@ -1942,7 +1942,7 @@ def load_transform_from_anything(thing, **kwargs) -> Transform:
     if isinstance(thing, pg.SRTTransform):
         return SRT3DTransform.from_pyqtgraph(thing, **kwargs)
     elif isinstance(thing, Transform):
-        return thing
+        return thing.copy()
     elif isinstance(thing, list):
         return AffineTransform.from_matrix(np.array(thing), **kwargs)
     elif "type" in thing:

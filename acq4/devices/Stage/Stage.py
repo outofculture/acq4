@@ -60,15 +60,14 @@ class Stage(Device, OptomechDevice):
 
         # total device transform will be composed of a base transform (defined in the config)
         # and a dynamic translation provided by the hardware.
-        self._baseTransform = self.deviceTransform()
+        self._baseTransform = self.deviceTransform
 
-        m = self._baseTransform
-        angle, axis = m.rotation
-        scale = m.scale
+        angle, axis = self.deviceRotation
+        scale = self.deviceScale
         if tuple(scale) != (1, 1, 1) or angle != 0:
             raise ValueError("Stage transform must be only translation.")
 
-        self._stageTransform = AffineTransform(dims=(3, 3))
+        self._stageTransform = TTransform(dims=(3, 3))
         self.isManipulator = config.get("isManipulator", False)
 
         self.lock = Mutex(Qt.QMutex.Recursive)
@@ -175,28 +174,14 @@ class Stage(Device, OptomechDevice):
             speed = self.slowSpeed
         return speed
 
-    def stageTransform(self):
-        """Return the transform that implements the translation/rotation generated
-        by the current hardware state.
+    def calculateStageOffset(self, pos, axisTransform=None):
+        """Return a device offset given a position reported by the device and possiblly an axis
+        transform. For rotation or nonlinear movement, this method must be reimplemented.
         """
-        return self._stageTransform
-
-    def inverseStageTransform(self):
-        return self.stageTransform().inverse
-
-    def _makeStageTransform(self, pos, axisTransform=None):
-        """Return a stage transform (as should be returned by stageTransform)
-        given a position reported by the device.
-
-        Subclasses may override this method; the default uses _axisTransform to
-        map from the device position to a translation matrix. This covers only cases
-        where the stage axes perform linear translations. For rotation or nonlinear
-        movement, this method must be reimplemented.
-        """
+        # TODO general concern: acq4 does not generally think of transforms as mutable, so make sure we're not using them as if they're immutable anywhere
         if axisTransform is None:
             axisTransform = self.axisTransform()
-        offset = map_through_transform(pos, axisTransform)[:3]
-        return TTransform(offset=offset, dims=(3, 3))
+        return map_through_transform(pos, axisTransform)[:3]
 
     def axisTransform(self) -> AffineTransform:
         """Transformation matrix with columns that point in the direction that each manipulator axis moves.
@@ -218,7 +203,8 @@ class Stage(Device, OptomechDevice):
     def setAxisTransform(self, tr):
         self._axisTransform = tr
         self._calculatedXAxisOrientation = None
-        self._updateTransform()
+        if self._lastPos is not None:
+            self._stageTransform.offset = tr.map(self._lastPos)
         self.sigOrientationChanged.emit(self)
 
     @functools.lru_cache
@@ -262,8 +248,7 @@ class Stage(Device, OptomechDevice):
         with self.lock:
             lastPos = self._lastPos
             self._lastPos = pos
-            self._stageTransform = self._makeStageTransform(pos)
-            self._updateTransform()
+            self._stageTransform.offset = self.axisTransform().map(pos)
 
         self.sigPositionChanged.emit(self, pos, lastPos)
 
@@ -274,19 +259,6 @@ class Stage(Device, OptomechDevice):
     def inverseBaseTransform(self):
         """Return the inverse of the base transform for this Stage."""
         return self._baseTransform.inverse
-
-    def setBaseTransform(self, tr):
-        """Set the base transform of the stage.
-
-        This sets the starting position and orientation of the stage before the
-        hardware-reported stage position is taken into account.
-        """
-        self._baseTransform = tr
-        self._updateTransform()
-
-    def _updateTransform(self):
-        ## this informs rigidly-connected devices that they have moved
-        self.setDeviceTransform(self._baseTransform * self._stageTransform)
 
     @property
     def positionUpdatesPerSecond(self):
@@ -333,10 +305,12 @@ class Stage(Device, OptomechDevice):
         target = self.targetPosition()
         if target is None:
             return None
-        tr = self.baseTransform() * self._makeStageTransform(target)
+        # TODO hmm
+        offset = self.calculateStageOffset(target)
+        tr = self.baseTransform() * offset
         pd = self.parentDevice()
         if pd is not None:
-            tr = pd.globalTransform() * tr
+            tr = pd.globalTransform * tr
         return map_through_transform([0, 0, 0], tr)
 
     def getState(self):
@@ -415,6 +389,7 @@ class Stage(Device, OptomechDevice):
         # TODO this should use calculatedAxisOrientation and its ilk, or maybe go away
         # TODO hardware-specific implementations?
         # TODO throw this away
+        # TODO bitrot: coorx stuff breaks this
         pos = np.array(self.getPosition())
         axis_xform = self.axisTransform()
 
@@ -460,12 +435,13 @@ class Stage(Device, OptomechDevice):
             )
         if self.nAxes <= 3:
             # we can use a simple inverse transform
-            tr = self.stageTransform().offset + np.array(self.mapFromGlobal(globalPos))
+            tr = self._stageTransform.offset + np.array(self.mapFromGlobal(globalPos))
             return pg.Vector(self.inverseAxisTransform().map(tr))
 
         if linear:
             return greedy_axis_inverse_kinematics(
                 globalPos,
+                # TODO is the parent transform needed here?
                 self.axisTransform(),
                 self.getLimits(),
                 previousPos,
@@ -474,6 +450,7 @@ class Stage(Device, OptomechDevice):
         # otherwise, hold to a neutral position of d=0
         return neutral_anchored_inverse_kinematics(
             globalPos,
+            # TODO ditto
             self.axisTransform(),
             self.getLimits(),
             [None, None, None, 0],

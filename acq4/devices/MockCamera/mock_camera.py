@@ -136,7 +136,7 @@ class MockCamera(Camera):
     def getBackground(self):
         if self.background is None:
             w, h = self.params["sensorSize"]
-            tr = self.globalTransform().as_pyqtgraph()
+            tr = self.globalTransform.as_pyqtgraph()
 
             if isinstance(self.bgData, dict):
                 # select data based on objective
@@ -208,7 +208,7 @@ class MockCamera(Camera):
         return self.background
 
     def pixelVectors(self):
-        tr = self.globalTransform()
+        tr = self.globalTransform
         origin = tr.map(np.asarray((0, 0, 0)))
         x = tr.map(np.asarray((1, 0, 0))) - origin
         y = tr.map(np.asarray((0, 1, 0))) - origin
@@ -275,7 +275,7 @@ class MockCamera(Camera):
         px = (self.pixelVectors()[0] ** 2).sum() ** 0.5
 
         # Generate transform that maps grom global coordinates to image coordinates
-        cameraTr = self.inverseGlobalTransform()
+        cameraTr = self.globalTransform.inverse
         # note we use binning=(1,1) here because the image is downsampled later.
         frameTr = self.makeFrameTransform(region, [1, 1]).inverse
         tr = frameTr * cameraTr

@@ -268,7 +268,8 @@ class ManipulatorAxesCalibrationWindow(Qt.QWidget):
                 ident = np.eye(self.dev.nAxes + 1)
                 ident[:self.dev.nAxes] = axisTr.reshape(self.dev.nAxes, self.dev.nAxes + 1)
                 axisTr = pg.Transform3D(ident)
-            st = self.dev._makeStageTransform(_stage_pos, axisTr)
+            # TODO
+            offset = self.dev.calculateStageOffset(_stage_pos, axisTr)
             tr = pg.Transform3D(self.dev.baseTransform() * st)
             return tr.map(localPos)
 

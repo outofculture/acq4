@@ -219,17 +219,13 @@ class GeometryAwarePathGenerator(PipettePathGenerator):
                 continue
             geom = dev.getGeometry()
             if geom is not None:
-                pg_xform = dev.globalPhysicalTransform().as_pyqtgraph()
-                physical_xform = SRT3DTransform.from_pyqtgraph(
-                    pg_xform,
+                physical_xform = dev.globalPhysicalTransform.as_affine().copy(
                     from_cs=dev.geometryCacheKey,
                     to_cs="global",
                 )
                 geometries[geom] = physical_xform
         planner = GeometryMotionPlanner(geometries)
-        pg_xform = self.pip.globalPhysicalTransform().as_pyqtgraph()
-        from_pip_to_global = SRT3DTransform.from_pyqtgraph(
-            pg_xform,
+        from_pip_to_global = self.pip.globalPhysicalTransform.as_affine().copy(
             from_cs=self.pip.geometryCacheKey,
             to_cs="global",
         )
