@@ -182,6 +182,8 @@ class Pipette(Device, OptomechDevice):
         # If parent orientation changes (probably due to being recalibrated), update pitch/yaw angles if needed.
         parent.sigOrientationChanged.connect(self._directionChanged)
 
+        self._baseTransform = AffineTransform(dims=(3, 3))
+        self.setBaseTransform(self._baseTransform)
         self._updateTransform()
 
         self.tracker = ResnetPipetteTracker(self)
@@ -476,13 +478,10 @@ class Pipette(Device, OptomechDevice):
         z = np.array([0, 0, 1])
         y = np.cross(z, x)  # +y points left when looking down +x
         y = y / np.linalg.norm(y)
-        tr = AffineTransform(dims=(3, 3))
-        tr.set_mapping(
+        self._baseTransform.set_mapping(
             np.asarray([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]]),  # local
             np.asarray([[0, 0, 0], x, y, z]) + self.offset,  # parent
         )
-        # TODO are we really gunna do this every time?
-        self.setBaseTransform(tr)
 
     def _directionChanged(self):
         """Orientation has changed"""
