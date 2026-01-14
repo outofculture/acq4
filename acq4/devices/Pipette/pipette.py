@@ -183,7 +183,7 @@ class Pipette(Device, OptomechDevice):
         parent.sigOrientationChanged.connect(self._directionChanged)
 
         self._baseTransform = AffineTransform(dims=(3, 3))
-        self.setBaseTransform(self._baseTransform)
+        self.deviceTransform = self._baseTransform
         self._updateTransform()
 
         self.tracker = ResnetPipetteTracker(self)

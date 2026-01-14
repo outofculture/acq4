@@ -171,7 +171,7 @@ class OptomechDevice(InterfaceMixin):
             self.__transform = SRT3DTransform(dims=(3, 3))
 
         # This transform maps from the device's local coordinate system to the parent device's coordinate system
-        self.deviceTransform = CompositeTransform(self.__transform, NullTransform(dims=(3, 3)))
+        self._deviceTransformWrapper = CompositeTransform(self.__transform, NullTransform(dims=(3, 3)))
         self.deviceTransform.add_change_callback(self._handleDeviceTransformChange)
 
         self.physicalTransform = CompositeTransform(self._physicalTransform, NullTransform(dims=(3, 3)))
@@ -204,7 +204,14 @@ class OptomechDevice(InterfaceMixin):
         self.addInterface("OptomechDevice")
         dm.declareInterface(name, ["OptomechDevice"], self)
 
-    def setBaseTransform(self, tr):
+    @property
+    def deviceTransform(self):
+        return self._deviceTransformWrapper
+
+    @deviceTransform.setter
+    def deviceTransform(self, tr):
+        """This sets the fundamental transform for this device, which is notably different from the
+        return of `self.deviceTransform` due to the need to use the coorx change events."""
         self.__transform = tr
         self.deviceTransform.transforms = [tr, self.deviceTransform.transforms[1]]
 
