@@ -12,7 +12,6 @@ import threading
 import time
 import weakref
 from collections import OrderedDict
-from datetime import datetime
 
 from MetaArray import MetaArray
 
@@ -20,7 +19,6 @@ import pyqtgraph as pg
 import pyqtgraph.reload as reload
 from pyqtgraph import configfile
 from pyqtgraph.debug import Profiler
-from pyqtgraph.util.mutex import Mutex
 from . import __version__
 from . import devices, modules
 from .Interfaces import InterfaceDirectory
@@ -30,6 +28,7 @@ from .util import DataManager, ptime, Qt
 from .util.DataManager import DirHandle
 from .util.HelpfulException import HelpfulException
 from .util.LogWindow import get_log_window, get_error_dialog
+from .util.Mutex import RecursiveMutex
 
 TEMP_LOG = "temp_log.json"
 setup_logging(TEMP_LOG, gui=False, console_level=logging.DEBUG)
@@ -87,7 +86,7 @@ class Manager(Qt.QObject):
         return m
 
     def __init__(self):
-        self.moduleLock = Mutex(recursive=True)  ## used for keeping some basic methods thread-safe
+        self.moduleLock = RecursiveMutex()  # used for keeping some basic methods thread-safe
         # self.devices = OrderedDict()  # all currently loaded devices
         self.isReady = threading.Event()
         self.modules = OrderedDict()  # all currently running modules
@@ -102,7 +101,7 @@ class Manager(Qt.QObject):
         self.disableDevs = []
         self.disableAllDevs = False
         self.alreadyQuit = False
-        self.taskLock = Mutex(Qt.QMutex.Recursive)
+        self.taskLock = RecursiveMutex()
         self._folderTypes = None
         self._logFile = None
         self._consoleLogLevel = logging.WARNING
@@ -903,7 +902,7 @@ class Task:
         self.command = command
         self.result = None
 
-        self.taskLock = Mutex(recursive=True)
+        self.taskLock = RecursiveMutex()
         self.deviceLock = None
 
         self.startedDevs = []

@@ -9,7 +9,7 @@ import numpy as np
 
 import pyqtgraph as pg
 from acq4.util import Qt, ptime
-from acq4.util.Mutex import Mutex
+from acq4.util.Mutex import RecursiveMutex
 from coorx import AffineTransform
 from pyqtgraph import siFormat
 from .calibration import ManipulatorAxesCalibrationWindow, StageAxesCalibrationWindow
@@ -67,7 +67,7 @@ class Stage(Device, OptomechDevice):
         self._inverseStageTransform = Qt.QMatrix4x4()
         self.isManipulator = config.get("isManipulator", False)
 
-        self.lock = Mutex(Qt.QMutex.Recursive)
+        self.lock = RecursiveMutex()
 
         nAxes = len(self.axes())
         self._lastPos = [0] * nAxes

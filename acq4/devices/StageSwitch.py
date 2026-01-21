@@ -1,7 +1,6 @@
-from __future__ import print_function
-from acq4.util import Qt
-from acq4.util.Mutex import Mutex
 from acq4.devices.Device import Device
+from acq4.util import Qt
+from acq4.util.Mutex import RecursiveMutex
 
 
 class StageSwitch(Device):
@@ -40,7 +39,7 @@ class StageSwitch(Device):
 
     def __init__(self, dm, config, name):
         Device.__init__(self, dm, config, name)
-        self.lock = Mutex(Qt.QMutex.Recursive)
+        self.lock = RecursiveMutex()
 
         # used to emit signal when position passes a threshold
         self.switches = {}
@@ -91,7 +90,3 @@ class StageSwitch(Device):
     def getSwitch(self, name):
         with self.lock:
             return self.switches[name]
-
-
-
-        

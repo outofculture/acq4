@@ -3,7 +3,7 @@ import time
 from acq4.devices.Laser import Laser, LaserTask
 from acq4.drivers.Coherent import Coherent
 from acq4.util import Qt
-from acq4.util.Mutex import Mutex
+from acq4.util.Mutex import RecursiveMutex
 from acq4.util.Thread import Thread
 
 
@@ -56,9 +56,9 @@ class CoherentLaser(Laser):
         self.port = config['port']-1  ## windows com ports start at COM1, pyserial ports start at 0
         self.baud = config.get('baud', 19200)
         self.driver = Coherent(self.port, self.baud)
-        self.driverLock = Mutex(Qt.QMutex.Recursive)  ## access to low level driver calls
+        self.driverLock = RecursiveMutex()  # access to low level driver calls
         
-        self.coherentLock = Mutex(Qt.QMutex.Recursive)  ## access to self.attributes
+        self.coherentLock = RecursiveMutex()  # access to self.attributes
         self.coherentPower = 0
         self.coherentWavelength = 0
         
@@ -138,7 +138,7 @@ class CoherentLaser(Laser):
         
     def createTask(self, cmd, parentTask):
         return CoherentTask(self, cmd, parentTask)
-        
+
 class CoherentTask(LaserTask):
     pass
     # This is disabled--internal shutter in coherent laser should NOT be used by ACQ4; use a separate shutter.
@@ -156,7 +156,7 @@ class CoherentTask(LaserTask):
     #     if not self.shutterOpened:
     #         self.dev.closeShutter()
     #     LaserTask.stop(self, abort)
-        
+
 class CoherentThread(Thread):
 
     sigPowerChanged = Qt.Signal(object)
@@ -165,7 +165,7 @@ class CoherentThread(Thread):
 
     def __init__(self, dev, driver, lock):
         Thread.__init__(self, name=f'CoherentThread_{dev.name()}')
-        self.lock = Mutex(Qt.QMutex.Recursive)
+        self.lock = RecursiveMutex()
         self.dev = dev
         self.driver = driver
         self.driverLock = lock

@@ -1,19 +1,18 @@
-import numpy as np
 import time
+
+import numpy as np
+from MetaArray import MetaArray
 from scipy import stats
 
-
-from MetaArray import MetaArray
+import acq4.util.ptime as ptime
 from acq4.Manager import getManager
 from acq4.devices.DAQGeneric import DAQGeneric, DAQGenericTask
 from acq4.devices.NiDAQ.nidaq import NiDAQ
 from acq4.devices.OptomechDevice import OptomechDevice
 from acq4.util import Qt
 from acq4.util.HelpfulException import HelpfulException
-from acq4.util.Mutex import Mutex
+from acq4.util.Mutex import RecursiveMutex
 from pyqtgraph.functions import siFormat
-import acq4.util.ptime as ptime
-
 from .LaserDevGui import LaserDevGui
 from .LaserTaskGui import LaserTaskGui
 
@@ -144,8 +143,8 @@ class Laser(DAQGeneric, OptomechDevice):
         self.config = config  # override config stored by DAQGeneric
         OptomechDevice.__init__(self, manager, config, name)
        
-        self.lock = Mutex(Qt.QMutex.Recursive)
-        self.variableLock = Mutex(Qt.QMutex.Recursive)
+        self.lock = RecursiveMutex()
+        self.variableLock = RecursiveMutex()
         self.calibrationIndex = None
         self.pCellCalibration = None
         self.getPowerHistory()
@@ -683,8 +682,6 @@ class Laser(DAQGeneric, OptomechDevice):
         task = getManager().createTask(cmd)
         task.execute()
         result = task.getResult()
-        
-
 
 
 class LaserTask(DAQGenericTask):
@@ -879,4 +876,3 @@ class LaserTask(DAQGenericTask):
     
     #def storeResult(self, dirHandle):
         #pass
-

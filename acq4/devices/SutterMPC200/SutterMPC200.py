@@ -2,10 +2,8 @@ import time
 
 from acq4.drivers.SutterMPC200 import SutterMPC200 as MPC200_Driver
 from acq4.util import Qt, ptime
-from acq4.util.Mutex import Mutex
+from acq4.util.Mutex import RecursiveMutex
 from acq4.util.Thread import Thread
-from pyqtgraph import debug
-
 from ..Stage import Stage, MoveFuture
 
 
@@ -185,7 +183,7 @@ class SutterMPC200(Stage):
 class MonitorThread(Thread):
     def __init__(self, dev):
         self.dev = dev
-        self.lock = Mutex(recursive=True)
+        self.lock = RecursiveMutex()
         self.stopped = False
         self.interval = 0.3
         self.minInterval = 100e-3
@@ -285,7 +283,7 @@ class MonitorThread(Thread):
             except:
                 self.dev.logger.exception('Error in MPC200 monitor thread:')
                 time.sleep(maxInterval)
-                
+
 
 class MPC200MoveFuture(MoveFuture):
     """Provides access to a move-in-progress on an MPC200 drive.

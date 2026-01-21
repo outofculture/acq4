@@ -21,7 +21,7 @@ import numpy as np
 from acq4 import filetypes
 from acq4.logging_config import get_logger
 from acq4.util import Qt, advancedTypes as advancedTypes
-from acq4.util.Mutex import Mutex
+from acq4.util.Mutex import RecursiveMutex
 from pyqtgraph import SignalProxy, BusyCursor
 from pyqtgraph.configfile import readConfigFile, writeConfigFile, appendConfigFile
 
@@ -72,31 +72,31 @@ class DataManager(Qt.QObject):
     """Class for creating and caching DirHandle objects to make sure there is only one manager object per
     file/directory. This class is (supposedly) thread-safe.
     """
-    
+
     INSTANCE = None
-    
+
     def __init__(self):
         Qt.QObject.__init__(self)
         if DataManager.INSTANCE is not None:
             raise ValueError("Attempted to create more than one DataManager!")
         DataManager.INSTANCE = self
         self.cache = {}
-        self.lock = Mutex(Qt.QMutex.Recursive)
-        
+        self.lock = RecursiveMutex()
+
     def getDirHandle(self, dirName, create=False):
         with self.lock:
             dirName = os.path.abspath(dirName)
             if not self._cacheHasName(dirName):
                 self._addHandle(dirName, DirHandle(dirName, self, create=create))
             return self._getCache(dirName)
-        
+
     def getFileHandle(self, fileName):
         with self.lock:
             fileName = os.path.abspath(fileName)
             if not self._cacheHasName(fileName):
                 self._addHandle(fileName, FileHandle(fileName, self))
             return self._getCache(fileName)
-        
+
     def getHandle(self, fileName):
         """Return a FileHandle or DirHandle for the given fileName. 
         If the file does not exist, a handle will still be returned, but is not guaranteed to have the correct type.
@@ -106,7 +106,7 @@ class DataManager(Qt.QObject):
             return self.getDirHandle(fileName)
         else:
             return self.getFileHandle(fileName)
-        
+
     def cleanup(self):
         """Attempt to free memory by allowing python to collect any unused handles."""
         import gc
@@ -124,8 +124,8 @@ class DataManager(Qt.QObject):
         if app is not None:
             handle.moveToThread(app.thread())
         ## No signals; handles should explicitly inform the manager of changes
-        #Qt.QObject.connect(handle, Qt.SIGNAL('changed'), self._handleChanged)
-        
+        # Qt.QObject.connect(handle, Qt.SIGNAL('changed'), self._handleChanged)
+
     def _handleChanged(self, handle, change, *args):
         with self.lock:
             if change in ['renamed', 'moved']:
@@ -154,12 +154,12 @@ class DataManager(Qt.QObject):
 
     def _getTree(self, parent):
         """Return the entire list of cached handles that are children or grandchildren of this handle"""
-        
+
         ## If handle has no children, then there is no need to search for its tree.
         tree = [parent]
         ph = self._getCache(parent)
         prefix = os.path.normcase(os.path.join(parent, ''))
-        
+
         for h in self.cache:
             if h[:len(prefix)] == prefix:
                 tree.append(h)
@@ -167,13 +167,13 @@ class DataManager(Qt.QObject):
 
     def _getCache(self, name):
         return self.cache[abspath(name)]
-        
+
     def _setCache(self, name, value):
         self.cache[abspath(name)] = value
-        
+
     def _delCache(self, name):
         del self.cache[abspath(name)]
-        
+
     def _cacheHasName(self, name):
         return abspath(name) in self.cache
 
@@ -188,7 +188,7 @@ class FileHandle(Qt.QObject):
         self.delayedChanges = []
         self.path = os.path.abspath(path)
         self.parentDir = None
-        self.lock = Mutex(Qt.QMutex.Recursive)
+        self.lock = RecursiveMutex()
         if Qt.QApplication.instance() is not None:
             self.sigproxy = SignalProxy(self.sigChanged, slot=self.delayedChange)
         else:

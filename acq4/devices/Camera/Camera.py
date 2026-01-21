@@ -767,7 +767,7 @@ class CameraTask(DAQGenericTask):
 
 class CameraTaskResult:
     def __init__(self, task: CameraTask, frames: list[Frame], daqResult: MetaArray | None):
-        self.lock = Mutex(recursive=True)
+        self.lock = RecursiveMutex()
         self._task = task
         self._frames = frames
         self._daqResult = daqResult

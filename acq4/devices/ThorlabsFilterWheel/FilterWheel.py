@@ -1,19 +1,15 @@
-# -*- coding: utf-8 -*-
 import time
 from collections import OrderedDict
 
 import pyqtgraph as pg
-import acq4.util.debug as debug
 from acq4.devices.Device import TaskGui, Device, DeviceTask
 from acq4.devices.FilterWheel.filterwheel import FilterWheelDevGui
 from acq4.devices.Microscope import Microscope
 from acq4.devices.OptomechDevice import OptomechDevice
 from acq4.drivers.ThorlabsFW102C.thorFW102cDriver import FilterWheelDriver
 from acq4.util import Qt
-from acq4.util.Mutex import Mutex
+from acq4.util.Mutex import RecursiveMutex
 from acq4.util.Thread import Thread
-
-
 
 Ui_Form = Qt.importTemplate('.FilterWheelTemplate')
 
@@ -72,8 +68,8 @@ class FilterWheel(Device, OptomechDevice):
         
         
         self.driver = FilterWheelDriver(self.port, self.baud)
-        self.driverLock = Mutex(Qt.QtCore.QMutex.Recursive)  ## access to low level driver calls
-        self.filterWheelLock = Mutex(Qt.QtCore.QMutex.Recursive)  ## access to self.attributes
+        self.driverLock = RecursiveMutex()  # access to low level driver calls
+        self.filterWheelLock = RecursiveMutex()  # access to self.attributes
         
         
         self.filters = OrderedDict()
@@ -206,7 +202,6 @@ class Filter(OptomechDevice):
         return "<Filter %s.%s>" % (self._fw.name(), self.name())
 
 
-    
 class FilterWheelTask(DeviceTask):
 
     def __init__(self, dev, cmd, parentTask):
@@ -232,7 +227,7 @@ class FilterWheelTask(DeviceTask):
 
     def isDone(self):
         return True
-    
+
 class FilterWheelTaskGui(TaskGui):
     
     def __init__(self, dev, taskRunner):
@@ -325,15 +320,15 @@ class FilterWheelTaskGui(TaskGui):
             self.filterList.append([(i+1), filt[i].name()])
         #print 'filterList : ', self.filterList
         return self.filterList
-            
-    
+
+
 class FilterWheelThread(Thread):
 
     fwPosChanged = Qt.QtCore.Signal(object)
 
     def __init__(self, dev, driver, lock):
         Thread.__init__(self, name=f'{dev.name()}_FilterWheelThread')
-        self.lock = Mutex(Qt.QtCore.QMutex.Recursive)
+        self.lock = RecursiveMutex()
         self.dev = dev
         self.driver = driver
         self.driverLock = lock

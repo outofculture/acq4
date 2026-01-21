@@ -6,7 +6,7 @@ from MetaArray import MetaArray
 from acq4 import Manager
 from acq4.logging_config import get_logger
 from acq4.util import Qt
-from acq4.util.Mutex import Mutex
+from acq4.util.Mutex import RecursiveMutex
 from acq4.util.Thread import Thread
 
 try:
@@ -36,7 +36,7 @@ class RecordThread(Thread):
         self.frameLimit = None
 
         # Interaction with worker thread:
-        self.lock = Mutex(Qt.QMutex.Recursive)
+        self.lock = RecursiveMutex()
         self.newFrames = []  # list of frames and the files they should be sored / appended to.
 
         # Attributes private to worker thread:

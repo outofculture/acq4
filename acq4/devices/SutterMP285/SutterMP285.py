@@ -9,7 +9,7 @@ from acq4.devices.Device import Device
 from acq4.devices.OptomechDevice import OptomechDevice
 from acq4.drivers.SutterMP285 import SutterMP285 as SutterMP285Driver  ## name collision with device class
 from acq4.util import Qt
-from acq4.util.Mutex import Mutex
+from acq4.util.Mutex import RecursiveMutex
 from acq4.util.Thread import Thread
 
 Ui_Form = Qt.importTemplate('.devTemplate')
@@ -58,7 +58,7 @@ class SutterMP285(Device, OptomechDevice):
         Device.__init__(self, dm, config, name)
         OptomechDevice.__init__(self, dm, config, name)
         self.configFile = os.path.join('devices', name + '_config.cfg')
-        self.lock = Mutex(Qt.QMutex.Recursive)
+        self.lock = RecursiveMutex()
         self.port = config['port']  ## windows com ports start at COM1, pyserial ports start at 0
 
         # whether this device has an arduino interface protecting it from roe/serial collisions
@@ -82,7 +82,7 @@ class SutterMP285(Device, OptomechDevice):
         self.loadConfig()
         
         self.mp285 = SutterMP285Driver(self.port, self.baud)
-        self.driverLock = Mutex(Qt.QMutex.Recursive)
+        self.driverLock = RecursiveMutex()
         
         self.mThread = SutterMP285Thread(self, self.mp285, self.driverLock, self.scale, self.limits, self.maxSpeed)
         self.mThread.sigPositionChanged.connect(self.posChanged)
@@ -279,7 +279,7 @@ class SutterMP285Thread(Thread):
 
     def __init__(self, dev, driver, driverLock, scale, limits, maxSpd):
         Thread.__init__(self)
-        self.lock = Mutex(Qt.QMutex.Recursive)
+        self.lock = RecursiveMutex()
         self.scale = scale
         self.mp285 = driver
         self.driverLock = driverLock

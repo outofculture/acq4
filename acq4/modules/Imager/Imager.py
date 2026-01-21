@@ -36,7 +36,7 @@ from acq4.modules.Camera import CameraModuleInterface
 from acq4.modules.Module import Module
 from acq4.util import Qt, ptime
 from acq4.util import imaging
-from acq4.util.Mutex import Mutex
+from acq4.util.Mutex import RecursiveMutex
 from acq4.util.Thread import Thread
 from pyqtgraph import parametertree as PT
 
@@ -1101,7 +1101,7 @@ class ImagingFrame(imaging.Frame):
     """Represents a single collected image frame and its associated metadata."""
 
     def __init__(self, data, rectscan, info):
-        self.lock = Mutex(recursive=True)  # because frame may be accesed by recording thread.
+        self.lock = RecursiveMutex()  # because frame may be accesed by recording thread.
         self._rectscan = rectscan
         self._decomb = (0, False)
         self._image = None
@@ -1143,7 +1143,7 @@ class ImagingThread(Thread):
         self._abort = False
         self._video = True
         self._closeShutter = True  # whether to close shutter at end of acquisition
-        self.lock = Mutex(recursive=True)
+        self.lock = RecursiveMutex()
         self.manager = acq4.Manager.getManager()
         self.laserDev = laserDev
         self.scannerDev = scannerDev

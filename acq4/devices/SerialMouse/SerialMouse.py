@@ -1,16 +1,13 @@
-# -*- coding: utf-8 -*-
-from __future__ import print_function
-from __future__ import with_statement
-
 import os
-import serial
 import time
 
+import serial
+
 from acq4.devices.Device import Device
-from pyqtgraph.SignalProxy import SignalProxy
 from acq4.util import Qt
-from acq4.util.Mutex import Mutex
+from acq4.util.Mutex import RecursiveMutex
 from acq4.util.Thread import Thread
+from pyqtgraph.SignalProxy import SignalProxy
 
 
 class SerialMouse(Device):
@@ -43,7 +40,7 @@ class SerialMouse(Device):
     
     def __init__(self, dm, config, name):
         Device.__init__(self, dm, config, name)
-        self.lock = Mutex(Qt.QMutex.Recursive)
+        self.lock = RecursiveMutex()
         self.port = config['port']
         self.scale = config['scale']
         self.pos = [0, 0]
@@ -144,7 +141,7 @@ class MouseThread(Thread):
     
     def __init__(self, dev, startState=None):
         Thread.__init__(self)
-        self.lock = Mutex(Qt.QMutex.Recursive)
+        self.lock = RecursiveMutex()
         self.dev = dev
         self.port = self.dev.port
         if startState is None:

@@ -18,12 +18,12 @@ from acq4.util.HelpfulException import HelpfulException
 from acq4.util.SequenceRunner import runSequence
 from acq4.util.StatusBar import StatusBar
 from acq4.util.Thread import Thread
-from pyqtgraph.debug import Profiler
-from pyqtgraph.util.mutex import Mutex
 from acq4.util.future import Future
+from pyqtgraph.debug import Profiler
 from . import analysisModules
 from ..Module import Module
 from ...logging_config import get_logger
+from ...util.Mutex import RecursiveMutex
 
 logger = get_logger(__name__)
 Ui_MainWindow = Qt.importTemplate('.TaskRunnerTemplate')
@@ -972,7 +972,7 @@ class TaskThread(Thread):
         Thread.__init__(self, name="TaskRunner_Thread")
         self.ui = ui
         self.dm = self.ui.manager
-        self.lock = Mutex(Qt.QMutex.Recursive)
+        self.lock = RecursiveMutex()
         self.stopThread = True
         self.abortThread = False
         self.paused = False

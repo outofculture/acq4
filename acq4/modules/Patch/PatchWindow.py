@@ -10,7 +10,7 @@ from MetaArray import MetaArray
 import acq4.Manager as Manager
 from acq4.logging_config import get_logger
 from acq4.util import Qt, ptime
-from acq4.util.Mutex import Mutex
+from acq4.util.Mutex import RecursiveMutex
 from acq4.util.StatusBar import StatusBar
 from acq4.util.Thread import Thread
 from pyqtgraph import PlotWidget, mkPen
@@ -63,7 +63,7 @@ class PatchWindow(Qt.QMainWindow):
         }
         
         
-        self.paramLock = Mutex(Qt.QMutex.Recursive)
+        self.paramLock = RecursiveMutex()
 
         self.manager = dm
         self.clampName = clampName
@@ -402,7 +402,7 @@ class PatchThread(Thread):
         self.manager = ui.manager
         self.clampName = ui.clampName
         Thread.__init__(self, name=f'{self.clampName}_PatchThread')
-        self.lock = Mutex(Qt.QMutex.Recursive)
+        self.lock = RecursiveMutex()
         self.stopThread = True
         self.paramsUpdated = True
     

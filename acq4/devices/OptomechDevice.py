@@ -7,7 +7,7 @@ import numpy as np
 import pyqtgraph as pg
 from acq4.Interfaces import InterfaceMixin
 from acq4.util import Qt
-from acq4.util.Mutex import Mutex
+from acq4.util.Mutex import RecursiveMutex
 from acq4.util.geometry import Geometry
 
 TransformCache = "int | None | pg.SRTTransform3D"
@@ -155,7 +155,7 @@ class OptomechDevice(InterfaceMixin):
         self.__subdevices = collections.OrderedDict()
         self.__subdevice = None
 
-        self.__lock = Mutex(recursive=True, debug=False)
+        self.__lock = RecursiveMutex()
 
         self.sigTransformChanged.connect(self.__emitGlobalTransformChanged, type=Qt.Qt.DirectConnection)
         self.sigSubdeviceTransformChanged.connect(self.__emitGlobalSubdeviceTransformChanged, type=Qt.Qt.DirectConnection)

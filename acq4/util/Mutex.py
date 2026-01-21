@@ -1,9 +1,10 @@
 """
 Mutex.py -  Stand-in extension of Qt's QMutex class
 """
+from threading import RLock
+
 from acq4.util import Qt
 from pyqtgraph.util.mutex import Mutex as PGMutex
-from pyqtgraph.util.mutex import RecursiveMutex as PGRecursiveMutex
 
 
 class Mutex(PGMutex):
@@ -12,19 +13,7 @@ class Mutex(PGMutex):
         PGMutex.__init__(self, *args, **kargs)
 
 
-class RecursiveMutex(PGRecursiveMutex):
-    def __init__(self, **kargs):
-        kargs['debug'] = False
-        PGRecursiveMutex.__init__(self, **kargs)
-
-
-class PriorityMutex(object):
-    """A mutex that uses a priority-sorted queue to determine the order
-    in which lock requests are granted. 
-
-    Lock requests return a Future to support asynchronous as well as blocking
-    behavior.
-    """
+RecursiveMutex = RLock
 
 
 class ThreadsafeWrapper(object):
@@ -126,7 +115,7 @@ def threadsafe(obj, *args, **kargs):
     return typ(obj, *args, **kargs)
 
 
-__all__ = ['Mutex', 'RecursiveMutex', 'PriorityMutex', 'ThreadsafeWrapper', 'mkMethodWrapper', 'threadsafe']
+__all__ = ['Mutex', 'RecursiveMutex', 'ThreadsafeWrapper', 'mkMethodWrapper', 'threadsafe']
 
 
 if __name__ == '__main__':

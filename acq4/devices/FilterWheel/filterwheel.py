@@ -6,7 +6,7 @@ from acq4.devices.Device import TaskGui, Device, DeviceTask
 from acq4.devices.OptomechDevice import OptomechDevice
 from acq4.util import Qt
 from acq4.util import ptime
-from acq4.util.Mutex import Mutex
+from acq4.util.Mutex import RecursiveMutex
 from acq4.util.Thread import Thread
 
 Ui_Form = Qt.importTemplate('.FilterWheelTaskTemplate')
@@ -41,7 +41,7 @@ class FilterWheel(Device, OptomechDevice):
     def __init__(self, dm, config, name):
         Device.__init__(self, dm, config, name)
         
-        self.lock = Mutex(Qt.QMutex.Recursive)
+        self.lock = RecursiveMutex()
         
         self._filters = OrderedDict()
         self._slotNames = OrderedDict()
@@ -395,7 +395,7 @@ class FilterWheelTaskGui(TaskGui):
             self.ui.sequenceListEdit.show()
         else:
             self.ui.sequenceListEdit.hide()
-            
+
 
 class FilterWheelDevGui(Qt.QWidget):
     def __init__(self, dev):

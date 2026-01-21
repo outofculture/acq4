@@ -10,7 +10,7 @@ import acq4
 from acq4.Interfaces import InterfaceMixin
 from acq4.logging_config import get_logger
 from acq4.util import Qt
-from acq4.util.Mutex import Mutex
+from acq4.util.Mutex import Mutex, RecursiveMutex
 from acq4.util.optional_weakref import Weakref
 
 
@@ -30,7 +30,7 @@ class Device(InterfaceMixin, Qt.QObject):  # QObject calls super, which is disas
         # However, under some circumstances we might try to run two concurrent tasks from the same
         # thread (eg, due to calling processEvents() while waiting for the task to complete). We
         # don't have a good solution for this problem at present..
-        self._lock_ = Mutex(Qt.QMutex.Recursive)
+        self._lock_ = RecursiveMutex()
         self._lock_tb_ = None
         self.dm = deviceManager
         self.dm.declareInterface(name, ['device'], self)
@@ -48,14 +48,14 @@ class Device(InterfaceMixin, Qt.QObject):  # QObject calls super, which is disas
         # Return a handle unique to this task
         # See TaskGUI.listSequences and TaskGUI.generateTask for more info on usage.
         pass
-    
+
     def quit(self):
         pass
-    
+
     def deviceInterface(self, win):
         """Return a widget with a UI to put in the device rack"""
         return None
-        
+
     def taskInterface(self, task):
         """Return a widget with a UI to put in the task rack"""
         return TaskGui(self, task)
@@ -108,28 +108,21 @@ class Device(InterfaceMixin, Qt.QObject):  # QObject calls super, which is disas
         """
         # print("Device %s attempting lock.." % self.name())
         if block:
-            l = self._lock_.tryLock(int(timeout*1000))
-            if not l:
+            if not self._lock_.acquire(timeout=timeout):
                 print(f"Timeout waiting for device lock for {self.name()}")
                 print("  Device is currently locked from:")
                 print(self._lock_tb_)
                 raise TimeoutError(
-                    f"Timed out waiting for device lock for {self.name()}\n  Locking traceback:\n{self._lock_tb_}")
-        else:
-            l = self._lock_.tryLock()
-            if not l:
-                # print("Device %s lock failed." % self.name())
-                return False
-                # print "  Device is currently locked from:"
-                # print self._lock_tb_
-                # raise Exception("Could not acquire lock", 1)  ## 1 indicates failed non-blocking attempt
+                    f"Timed out waiting for device lock for {self.name()}\n  Locking traceback:\n{self._lock_tb_}"
+                )
+        elif not self._lock_.acquire(blocking=False):
+            return False
         self._lock_tb_ = ''.join(traceback.format_stack()[:-1])
-        # print("Device %s lock ok" % self.name())
         return True
 
     def release(self):
         try:
-            self._lock_.unlock()
+            self._lock_.release()
             # print("Device %s unlocked" % self.name())
             self._lock_tb_ = None
         except:
@@ -316,7 +309,7 @@ class DeviceTask(object):
     def abort(self):
         self.stop(abort=True)
 
-    
+
 class TaskGui(Qt.QWidget):
     
     sigSequenceChanged = Qt.Signal(object)
