@@ -175,10 +175,17 @@ class Camera(DAQGeneric, OptomechDevice):
                 "frameTransform": frame_xform,
                 "transform": dev_xform * frame_xform,
             }
+            if self.knownLatency is not None:
+                new_info["knownCameraLatency"] = self.knownLatency
 
             frame.addInfo(new_info)
 
         return _update
+
+    @property
+    def knownLatency(self) -> None | float:
+        """Return the known latency of this camera in seconds, or None if unknown."""
+        return self.config.get("freshFrameLatency", None)
 
     def setupCamera(self):
         """Prepare the camera at least so that get/setParams will function correctly"""
@@ -314,7 +321,7 @@ class Camera(DAQGeneric, OptomechDevice):
         self.acqThread.stop(block=block)
 
     @contextmanager
-    def ensureRunning(self, ensureFreshFrames=False, withKnownLatency=None):
+    def ensureRunning(self, ensureFreshFrames=False):
         """Context manager for starting and stopping camera acquisition thread. If used
         with non-blocking frame acquisition, this will still exit the context before
         the frames are necessarily acquired.
@@ -324,13 +331,14 @@ class Camera(DAQGeneric, OptomechDevice):
                 frames = camera.acquireFrames(10).getResult()
         """
         running = self.isRunning()
-        if ensureFreshFrames:
-            if withKnownLatency is not None:
-                # if we know the latency of the camera, we can just wait for that time
-                if not isinstance(withKnownLatency, (int, float)) or withKnownLatency <= 0:
+        if ensureFreshFrames and running:
+            if self.knownLatency is not None:
+                # if we know the latency of the camera, wait for that time
+                if not isinstance(self.knownLatency, (int, float)) or self.knownLatency <= 0:
                     raise ValueError("withKnownLatency must be a positive number.")
-                time.sleep(withKnownLatency)
-            elif running:
+                time.sleep(self.knownLatency)
+            else:
+                # otherwise, restart the camera to flush out old frames
                 self.stop()
                 self.start()
         if not running:
@@ -989,7 +997,6 @@ class AcquireThread(Thread):
             self.cameraStartEvent.set()
 
             lastFrameTime = lastStopCheck = ptime.time()
-            frameInfo = {}
 
             while True:
                 now = ptime.time()
@@ -1000,7 +1007,7 @@ class AcquireThread(Thread):
                     if lastFrameId is not None:
                         drop = frames[0]["id"] - lastFrameId - 1
                         if drop > 0:
-                            print(f"WARNING: Camera dropped {drop} frames")
+                            self.dev.logger.debug(f"Camera dropped {drop} frames")
 
                     # Build meta-info for this frame(s)
                     info = camState.copy()
@@ -1095,7 +1102,6 @@ class FrameAcquisitionFuture(Future):
         self._camera = camera
         self._frame_count = frameCount
         self._ensure_fresh_frames = ensureFreshFrames
-        self._known_latency = camera.config.get("freshFrameLatency", None)
         self._stop_when = None
         self._frames = []
         self._timeout = timeout
@@ -1112,11 +1118,7 @@ class FrameAcquisitionFuture(Future):
         with ExitStack() as stack:
             stack.callback(self._camera.sigNewFrame.disconnect, self._queue.put)
             if self._ensure_fresh_frames:
-                stack.enter_context(
-                    self._camera.ensureRunning(
-                        ensureFreshFrames=True, withKnownLatency=self._known_latency
-                    )
-                )
+                stack.enter_context(self._camera.ensureRunning(ensureFreshFrames=True))
             lastFrameTime = ptime.time()
             while True:
                 if self.isDone():
