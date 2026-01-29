@@ -8,15 +8,15 @@ from typing import Tuple, List
 import numpy as np
 
 import pyqtgraph as pg
-from acq4.util import Qt, ptime
-from acq4.util.Mutex import Mutex
 from coorx import AffineTransform, TTransform
 from pyqtgraph import siFormat
 from .calibration import ManipulatorAxesCalibrationWindow, StageAxesCalibrationWindow
 from ..Device import Device
 from ..OptomechDevice import OptomechDevice, map_through_transform
-from acq4 import getManager
+from ... import getManager
+from ...util import Qt, ptime
 from ...util.HelpfulException import HelpfulException
+from ...util.Mutex import Mutex
 from ...util.future import Future, FutureButton
 from ...util.geometry import (
     Plane,
