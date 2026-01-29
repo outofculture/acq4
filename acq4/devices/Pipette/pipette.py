@@ -473,6 +473,7 @@ class Pipette(Device, OptomechDevice):
 
     def _updateTransform(self):
         x = self.globalDirection()
+        # TODO handle direction errors
         x[2] = 0
         x = x / np.linalg.norm(x)
         z = np.array([0, 0, 1])
