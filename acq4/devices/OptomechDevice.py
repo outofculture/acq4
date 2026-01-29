@@ -171,15 +171,15 @@ class OptomechDevice(InterfaceMixin):
             self.__transform = SRT3DTransform(dims=(3, 3))
 
         # This transform maps from the device's local coordinate system to the parent device's coordinate system
-        self._deviceTransformWrapper = CompositeTransform(self.__transform, NullTransform(dims=(3, 3)))
+        self._deviceTransformWrapper = CompositeTransform([self.__transform, NullTransform(dims=(3, 3))])
         self.deviceTransform.add_change_callback(self._handleDeviceTransformChange)
 
-        self.physicalTransform = CompositeTransform(self._physicalTransform, NullTransform(dims=(3, 3)))
+        self.physicalTransform = CompositeTransform([self._physicalTransform, NullTransform(dims=(3, 3))])
 
         # This transform maps from local device coordinates to global coordinates
-        self.globalTransform = CompositeTransform(NullTransform(dims=(3, 3)), self.deviceTransform)
+        self.globalTransform = CompositeTransform([NullTransform(dims=(3, 3)), self.deviceTransform])
         self.globalPhysicalTransform = CompositeTransform(
-            NullTransform(dims=(3, 3)), self.physicalTransform
+            [NullTransform(dims=(3, 3)), self.physicalTransform]
         )
 
         if "parentDevice" in config:
@@ -474,9 +474,9 @@ class OptomechDevice(InterfaceMixin):
     def deviceTransformWithHypotheticalSubdevice(self, dev):
         """Return the deviceTransform that would be in effect if the specified subdevice were selected."""
         if dev is None:
-            return CompositeTransform(self.__transform, NullTransform(dims=(3, 3)))
+            return CompositeTransform([self.__transform, NullTransform(dims=(3, 3))])
         else:
-            return CompositeTransform(self.__transform, dev.deviceTransform)
+            return CompositeTransform([self.__transform, dev.deviceTransform])
 
     def treeSubdeviceState(self):
         """return an ordered dict of {devName: subdevName} pairs indicating the currently
