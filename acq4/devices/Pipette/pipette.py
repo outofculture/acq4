@@ -363,7 +363,7 @@ class Pipette(Device, OptomechDevice):
                     title="Initial tip offset outlier",
                     text=f"The tip offset for {self.name()} is outside of its normal range.",
                     extra_text="Do you want to include this outlier, discard the value, override all historic "
-                    "offsets, or only use this as a temporary offset?",
+                               "offsets, or only use this as a temporary offset?",
                     choices=["Include", "Discard", "Override", "Temporary"],
                 ),
                 timeout=None,
@@ -931,7 +931,7 @@ class PipetteCamModInterface(CameraModuleInterface):
 
         # decide how / whether to add a label for the target
         basename = dev.name().rstrip('0123456789')
-        self.pipetteNumber = dev.name()[len(basename) :]
+        self.pipetteNumber = dev.name()[len(basename):]
 
         showLabel = False
         if basename != dev.name():
