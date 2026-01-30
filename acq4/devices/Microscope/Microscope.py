@@ -169,6 +169,9 @@ class Microscope(Device, OptomechDevice):
         with self.lock:
             return list(self.selectedObjectives.values())
 
+    def listSubdevices(self):
+        return self.listObjectives()
+
     @future_wrap
     def loadPreset(self, name, _future):
         conf = self.presets[name]

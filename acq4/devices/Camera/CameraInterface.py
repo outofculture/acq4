@@ -350,8 +350,8 @@ class CameraInterface(CameraModuleInterface):
         devices = self.cam.ancestorDevices()
         xforms = []
         for dev in devices:
-            if hasattr(dev, 'listObjectives'):
-                xforms.append([dev.deviceTransformWithHypotheticalSubdevice(o) for o in dev.listObjectives()])
+            if subdevs := dev.listSubdevices():
+                xforms.append([dev.deviceTransformWithHypotheticalSubdevice(o) for o in subdevs])
             else:
                 xforms.append([dev.deviceTransform])
         chains = product(*xforms)

@@ -478,6 +478,10 @@ class OptomechDevice(InterfaceMixin):
         else:
             return CompositeTransform([self.__transform, dev.deviceTransform])
 
+    def listSubdevices(self):
+        """Return a list of all subdevices that may be selected for this device. Override in subclasses."""
+        return []
+
     def treeSubdeviceState(self):
         """return an ordered dict of {devName: subdevName} pairs indicating the currently
         selected subdevices throughout the tree."""
