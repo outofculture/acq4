@@ -175,10 +175,9 @@ class Stage(Device, OptomechDevice):
         return speed
 
     def calculateStageOffset(self, pos, axisTransform=None):
-        """Return a device offset given a position reported by the device and possiblly an axis
+        """Return a device offset given a position reported by the device and possibly an axis
         transform. For rotation or nonlinear movement, this method must be reimplemented.
         """
-        # TODO general concern: acq4 does not generally think of transforms as mutable, so make sure we're not using them as if they're immutable anywhere
         if axisTransform is None:
             axisTransform = self.axisTransform()
         return map_through_transform(pos, axisTransform)[:3]
@@ -291,7 +290,7 @@ class Stage(Device, OptomechDevice):
         raise NotImplementedError()
 
     def targetPosition(self):
-        """If the stage is moving, return the target position. Otherwise return
+        """If the stage is moving, return the target position in device coordinates. Otherwise, return
         the current position.
         """
         raise NotImplementedError()
@@ -305,13 +304,8 @@ class Stage(Device, OptomechDevice):
         target = self.targetPosition()
         if target is None:
             return None
-        # TODO hmm
         offset = self.calculateStageOffset(target)
-        tr = self.baseTransform() * offset
-        pd = self.parentDevice()
-        if pd is not None:
-            tr = pd.globalTransform * tr
-        return map_through_transform([0, 0, 0], tr)
+        return self.mapToGlobal(offset)
 
     def getState(self):
         with self.lock:
