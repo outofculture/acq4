@@ -67,13 +67,13 @@ class Stage(Device, OptomechDevice):
         if tuple(scale) != (1, 1, 1) or angle != 0:
             raise ValueError("Stage transform must be only translation.")
 
-        self._stageTransform = TTransform(dims=(3, 3))
         self.isManipulator = config.get("isManipulator", False)
 
         self.lock = Mutex(Qt.QMutex.Recursive)
 
         self.nAxes = len(self.axes())
         self._lastPos = [0] * self.nAxes
+        self._axialOrientations = {}  # cache of calculated axis orientations
 
         # default implementation just uses this matrix to
         # convert from device position to translation vector
@@ -185,8 +185,10 @@ class Stage(Device, OptomechDevice):
     def axisTransform(self) -> AffineTransform:
         """Transformation matrix with columns that point in the direction that each manipulator axis moves.
 
-        This transform gives the relationship between the coordinates reported by the device and real world coordinates.
-        It assumes a linear stage, where the axes are not necessarily orthogonal to each other.
+        This transform gives the relationship between the coordinates reported by the device and global coordinates.
+        This is separate from the rest of the optomech transform stack, but the axis transform constructs the
+        optomech offset from device positions. We assume a linear stage, where the axes are not necessarily
+        orthogonal to each other.
 
         This matrix is usually derived from calibration points. Before calibration, it provides only scale
         factors.
@@ -203,11 +205,10 @@ class Stage(Device, OptomechDevice):
         self._axisTransform = tr
         self._calculatedXAxisOrientation = None
         if self._lastPos is not None:
-            self._stageTransform.offset = tr.map(self._lastPos)
+            self.deviceOffset = tr.map(self._lastPos)
+        self._axialOrientations.clear()
         self.sigOrientationChanged.emit(self)
 
-    @functools.lru_cache
-    # TODO this needs to be invalidated when the axis transform changes
     def calculatedAxisOrientation(self, axis: str):
         """Return the pitch and yaw of a stage axis.
 
@@ -217,14 +218,16 @@ class Stage(Device, OptomechDevice):
         The *axis* argument specifies which axis to return, one of '+x', '-x', '+y', '-y', '+z', or '-z'.
         """
         assert axis in {'+x', '-x', '+y', '-y', '+z', '-z', '+d', '-d'}
-        m = self.axisTransform().full_matrix
-        axis_index = {'x': 0, 'y': 1, 'z': 2, 'd': 3}[axis[1]]
-        axis_sign = 1 if axis[0] == '+' else -1
-        selected_axis = pg.Vector(axis_sign * m[:3, axis_index])
-        globalz = pg.Vector([0, 0, 1])
-        pitch = selected_axis.angle(globalz) - 90
-        yaw = np.arctan2(selected_axis[1], selected_axis[0]) * 180 / np.pi
-        return {'pitch': pitch, 'yaw': yaw}
+        if self._axialOrientations.get(axis, None) is None:
+            m = self.axisTransform().full_matrix
+            axis_index = {'x': 0, 'y': 1, 'z': 2, 'd': 3}[axis[1]]
+            axis_sign = 1 if axis[0] == '+' else -1
+            selected_axis = pg.Vector(axis_sign * m[:3, axis_index])
+            globalz = pg.Vector([0, 0, 1])
+            pitch = selected_axis.angle(globalz) - 90
+            yaw = np.arctan2(selected_axis[1], selected_axis[0]) * 180 / np.pi
+            self._axialOrientations[axis] = {'pitch': pitch, 'yaw': yaw}
+        return self._axialOrientations[axis]
 
     # def calculatedYaw(self) -> float:
     #     """Return the X-axis pitch (angle relative to horizontal) in degrees
@@ -247,7 +250,7 @@ class Stage(Device, OptomechDevice):
         with self.lock:
             lastPos = self._lastPos
             self._lastPos = pos
-            self._stageTransform.offset = self.axisTransform().map(pos)
+            self.deviceOffset = self.axisTransform().map(pos)
 
         self.sigPositionChanged.emit(self, pos, lastPos)
 
@@ -429,7 +432,7 @@ class Stage(Device, OptomechDevice):
             )
         if self.nAxes <= 3:
             # we can use a simple inverse transform
-            tr = self._stageTransform.offset + np.array(self.mapFromGlobal(globalPos))
+            tr = self.deviceOffset + np.array(self.mapFromGlobal(globalPos))
             return pg.Vector(self.inverseAxisTransform().map(tr))
 
         if linear:
