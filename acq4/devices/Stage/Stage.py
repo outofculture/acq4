@@ -175,7 +175,7 @@ class Stage(Device, OptomechDevice):
         return speed
 
     def calculateStageOffset(self, pos, axisTransform=None):
-        """Return a device offset given a position reported by the device and possibly an axis
+        """Return a physical offset given a position reported by the device and possibly an axis
         transform. For rotation or nonlinear movement, this method must be reimplemented.
         """
         if axisTransform is None:
@@ -205,7 +205,7 @@ class Stage(Device, OptomechDevice):
         self._axisTransform = tr
         self._calculatedXAxisOrientation = None
         if self._lastPos is not None:
-            self.deviceOffset = tr.map(self._lastPos)
+            self.deviceOffset = self.calculateStageOffset(self._lastPos, tr)
         self._axialOrientations.clear()
         self.sigOrientationChanged.emit(self)
 
@@ -250,7 +250,7 @@ class Stage(Device, OptomechDevice):
         with self.lock:
             lastPos = self._lastPos
             self._lastPos = pos
-            self.deviceOffset = self.axisTransform().map(pos)
+            self.deviceOffset = self.calculateStageOffset(pos)
 
         self.sigPositionChanged.emit(self, pos, lastPos)
 
@@ -307,8 +307,8 @@ class Stage(Device, OptomechDevice):
         target = self.targetPosition()
         if target is None:
             return None
-        offset = self.calculateStageOffset(target)
-        return self.mapToGlobal(offset)
+        diff = self.mapToGlobal(target)
+        return diff - self.mapToGlobal(self.getPosition()) + self.globalPosition()
 
     def getState(self):
         with self.lock:
@@ -432,8 +432,8 @@ class Stage(Device, OptomechDevice):
             )
         if self.nAxes <= 3:
             # we can use a simple inverse transform
-            tr = self.deviceOffset + np.array(self.mapFromGlobal(globalPos))
-            return pg.Vector(self.inverseAxisTransform().map(tr))
+            offset = self.deviceOffset + np.array(self.mapFromGlobal(globalPos))
+            return pg.Vector(self.inverseAxisTransform().map(offset))
 
         if linear:
             return greedy_axis_inverse_kinematics(
