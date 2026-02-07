@@ -98,7 +98,7 @@ class PatchPipette(Device):
         self.pipetteDevice.sigMoveFinished.connect(self._pipetteMoveFinished)
         self.pipetteDevice.sigMoveRequested.connect(self._pipetteMoveRequested)
         self.pipetteDevice.sigTargetChanged.connect(self._pipetteTargetChanged)
-        self.pipetteDevice.parentDevice().sigPositionChanged.connect(
+        self.pipetteDevice.parentDevice().sigTransformChanged.connect(
             self._manipulatorTransformChanged
         )
         self.pipetteDevice.parentDevice().sigOrientationChanged.connect(
@@ -308,7 +308,7 @@ class PatchPipette(Device):
         self.calibrated = True
         self.emitNewEvent('pipette_calibrated')
 
-    def _manipulatorTransformChanged(self, dev, *args):
+    def _manipulatorTransformChanged(self, *args):
         pos = np.array(self.pipetteDevice.globalPosition())
         if self._lastPos is None or np.linalg.norm(pos - self._lastPos) > 1e-6:
             self._lastPos = pos

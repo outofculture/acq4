@@ -232,7 +232,7 @@ class Stage(Device, OptomechDevice):
     #     a = self.hardwareTransform()
     #     return math.atan2(-a[2, 0], math.sqrt(a[2, 1] ** 2 + a[2, 2] ** 2)) * 180 / math.pi
 
-    def inversehardwareTransform(self):
+    def inverseHardwareTransform(self):
         if self.nAxes > 3:
             raise ValueError("Transform is not invertible.")
         return self.hardwareTransform.inverse
@@ -246,8 +246,7 @@ class Stage(Device, OptomechDevice):
         with self.lock:
             lastPos = self._lastPos
             self._lastPos = pos
-            self.deviceOffset = self.calculateStageOffset(pos)
-
+        self.deviceOffset = self.calculateStageOffset(pos)
         self.sigPositionChanged.emit(self, pos, lastPos)
 
     def baseTransform(self):
@@ -427,7 +426,7 @@ class Stage(Device, OptomechDevice):
         if self.nAxes <= 3:
             # we can use a simple inverse transform
             offset = self.deviceOffset + np.array(self.mapFromGlobal(globalPos))
-            return pg.Vector(self.inversehardwareTransform().map(offset))
+            return pg.Vector(self.inverseHardwareTransform().map(offset))
 
         if linear:
             return greedy_axis_inverse_kinematics(

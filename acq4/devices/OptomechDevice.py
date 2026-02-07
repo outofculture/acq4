@@ -315,9 +315,9 @@ class OptomechDevice(InterfaceMixin):
                 ]
                 return
 
-            self.globalTransform.transforms = [parent.deviceTransform, self.deviceTransform]
+            self.globalTransform.transforms = [parent.globalTransform, self.deviceTransform]
             self.globalPhysicalTransform.transforms = [
-                parent.physicalTransform,
+                parent.globalPhysicalTransform,
                 self.physicalTransform,
             ]
 
