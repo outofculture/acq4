@@ -12,6 +12,7 @@ class MockFrame:
         seed = depth if data is None else data
         self._data = np.ones((10, 10), dtype=np.uint8) * 10 * seed
 
+    @property
     def globalTransform(self):
         return SRT3DTransform(offset=(0, 0, self.depth))
 

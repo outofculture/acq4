@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-from collections import deque
-
-import numpy as np
 import queue
 import threading
 import time
+from collections import deque
 from contextlib import contextmanager, ExitStack
 from typing import Callable, Optional
 
+import numpy as np
+from MetaArray import MetaArray, axis
+
 import acq4.util.ptime as ptime
 import pyqtgraph as pg
-from MetaArray import MetaArray, axis
 from acq4.devices.DAQGeneric import DAQGeneric, DAQGenericTask
 from acq4.devices.Device import Device
 from acq4.devices.Microscope import Microscope
@@ -22,7 +22,7 @@ from acq4.util.Mutex import RecursiveMutex
 from acq4.util.Thread import Thread
 from acq4.util.future import Future, future_wrap
 from acq4.util.imaging.frame import Frame
-from coorx import TTransform, SRT3DTransform
+from coorx import SRT3DTransform
 from pyqtgraph import Vector
 from pyqtgraph.debug import Profiler
 from .CameraInterface import CameraInterface
@@ -109,8 +109,7 @@ class Camera(DAQGeneric, OptomechDevice):
 
         self.setupCamera()
         self.sensorSize = self.getParam("sensorSize")
-        tr = TTransform(offset=(-self.sensorSize[0] * 0.5, -self.sensorSize[1] * 0.5, 0))
-        self.setDeviceTransform(self.deviceTransform() * tr)
+        self.deviceOffset = self.deviceScale * np.array((-self.sensorSize[0] * 0.5, -self.sensorSize[1] * 0.5, 0))
         self._frameInfoUpdater = None
 
         self.acqThread = AcquireThread(self)
@@ -146,7 +145,7 @@ class Camera(DAQGeneric, OptomechDevice):
         dm.declareInterface(name, ["camera"], self)
 
     def devicesToReserve(self) -> list[Device]:
-        return self.parentDevices()
+        return self.ancestorDevices()
 
     def addFrameInfo(self, frame: Frame):
         if self._frameInfoUpdater is None:
@@ -504,8 +503,7 @@ class Camera(DAQGeneric, OptomechDevice):
             return self.scopeState
 
     def transformChanged(self):  # called when this device's global transform changes.
-        prof = Profiler(disabled=True)
-        self.scopeState["transform"] = self.globalTransform()
+        self.scopeState["transform"] = self.globalTransform
         o = Vector(self.scopeState["transform"].map(Vector(0, 0, 0)))
         p = Vector(self.scopeState["transform"].map(Vector(1, 1)) - o)
         self.scopeState["centerPosition"] = o

@@ -130,8 +130,8 @@ class Sensapex(Stage):
             }
 
     # TODO what do we do about a default axis transform?
-    # def axisTransform(self):
-    #     if self._axisTransform is None:
+    # def hardwareTransform(self):
+    #     if self._hardwareTransform is None:
     #         # sensapex manipulators do not have orthogonal axes, so we set up a 3D transform to compensate:
     #         a = self.xPitch * np.pi / 180.0
     #         s = self.scale
@@ -149,9 +149,9 @@ class Sensapex(Stage):
     #         ])
     #         tr = solve3DTransform(pts1, pts2)
     #         tr[3, 3] = 1
-    #         self._axisTransform = Transform3D(tr)
-    #         self._inverseAxisTransform = None
-    #     return self._axisTransform
+    #         self._hardwareTransform = Transform3D(tr)
+    #         self._inversehardwareTransform = None
+    #     return self._hardwareTransform
 
     def stop(self, reason=None):
         """Stop the manipulator immediately.

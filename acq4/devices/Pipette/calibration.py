@@ -98,7 +98,7 @@ def findNewPipette(pipette: Pipette, imager: Camera, scopeDevice, searchSpeed=0.
         # find center of mass when the pipette crossed the center of the frame
         cs2 = np.cumsum(np.abs(profile[endIndex]))
         centerIndex2 = np.searchsorted(cs2, cs2.max() / 2, 'left')
-        # centerPos = frames2[0].globalTransform().map(list(centerPosPx) + [0])
+        # centerPos = frames2[0].globalTransform.map(list(centerPosPx) + [0])
         yDistPx = centerIndex2 - len(interpCoords) // 2
         yDist = frames2[0].info()['pixelSize'][0] * yDistPx
 
@@ -180,7 +180,7 @@ def findNewPipette(pipette: Pipette, imager: Camera, scopeDevice, searchSpeed=0.
 
 def frame_pipette_direction(frame, pipVector):
     """Return the direction a pipette points in image coordinates for a frame"""
-    frame_tr = frame.globalTransform().inverted()[0]
+    frame_tr = frame.globalTransform.inverse
     imgVector = frame_tr.map(pipVector) - frame_tr.map([0, 0, 0])
     imgVector /= np.linalg.norm(imgVector)
     return imgVector

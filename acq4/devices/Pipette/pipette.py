@@ -182,6 +182,8 @@ class Pipette(Device, OptomechDevice):
         # If parent orientation changes (probably due to being recalibrated), update pitch/yaw angles if needed.
         parent.sigOrientationChanged.connect(self._directionChanged)
 
+        self._baseTransform = AffineTransform(dims=(3, 3))
+        self.deviceTransform = self._baseTransform
         self._updateTransform()
 
         self.tracker = ResnetPipetteTracker(self)
@@ -361,7 +363,7 @@ class Pipette(Device, OptomechDevice):
                     title="Initial tip offset outlier",
                     text=f"The tip offset for {self.name()} is outside of its normal range.",
                     extra_text="Do you want to include this outlier, discard the value, override all historic "
-                    "offsets, or only use this as a temporary offset?",
+                               "offsets, or only use this as a temporary offset?",
                     choices=["Include", "Discard", "Override", "Temporary"],
                 ),
                 timeout=None,
@@ -471,17 +473,16 @@ class Pipette(Device, OptomechDevice):
 
     def _updateTransform(self):
         x = self.globalDirection()
+        # TODO handle direction errors
         x[2] = 0
         x = x / np.linalg.norm(x)
         z = np.array([0, 0, 1])
         y = np.cross(z, x)  # +y points left when looking down +x
         y = y / np.linalg.norm(y)
-        tr = AffineTransform(dims=(3, 3))
-        tr.set_mapping(
+        self._baseTransform.set_mapping(
             np.asarray([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]]),  # local
             np.asarray([[0, 0, 0], x, y, z]) + self.offset,  # parent
         )
-        self.setDeviceTransform(tr)
 
     def _directionChanged(self):
         """Orientation has changed"""
@@ -931,7 +932,7 @@ class PipetteCamModInterface(CameraModuleInterface):
 
         # decide how / whether to add a label for the target
         basename = dev.name().rstrip('0123456789')
-        self.pipetteNumber = dev.name()[len(basename) :]
+        self.pipetteNumber = dev.name()[len(basename):]
 
         showLabel = False
         if basename != dev.name():

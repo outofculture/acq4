@@ -514,7 +514,7 @@ class Imager(Module):
         the scanner ROI
         """
         prof = pg.debug.Profiler()
-        globalTr = self.scannerDev.globalTransform()
+        globalTr = self.scannerDev.globalTransform
         pt1 = globalTr.map(self.currentRoi.scannerCoords[0])
         pt2 = globalTr.map(self.currentRoi.scannerCoords[1])
         diff = pt2 - pt1
@@ -551,7 +551,7 @@ class Imager(Module):
         # the initial ROI will be nearly as big as the field, and centered.
         cpos = self.scannerDev.mapToGlobal((0, 0))  # get center position in scanner coordinates
         csize = self.scannerDev.mapToGlobal((self.fieldSize, self.fieldSize))
-        objScale = self.scannerDev.parentDevice().getObjective().scale().x()
+        objScale = self.scannerDev.parentDevice().getObjective().deviceScale[0]
         height = width = self.fieldSize * objScale
 
         csize = pg.Point(width, height)
@@ -618,7 +618,7 @@ class Imager(Module):
 
         # record position of ROI in Scanner's local coordinate system
         # we can use this later to allow the ROI to track stage movement
-        tr = self.scannerDev.inverseGlobalTransform()  # maps from global to device local
+        tr = self.scannerDev.globalTransform.inverse  # maps from global to device local
         pt1 = pg.Point(*state["pos"])
         pt2 = pt1 + pg.Point(*state["size"])
         self.currentRoi.scannerCoords = [
@@ -682,7 +682,7 @@ class Imager(Module):
     #     self.param['Tiles', 'Y1'] = self.tileHeight * 1e6
     #     # record position of ROI in Scanner's local coordinate system
     #     # we can use this later to allow the ROI to track stage movement
-    #     tr = self.scannerDev.inverseGlobalTransform() # maps from global to device local
+    #     tr = self.scannerDev.globalTransform.inverse # maps from global to device local
     #     pt1 = pg.Point(self.tilexPos, self.tileyPos)
     #     pt2 = pg.Point(self.tilexPos+self.tileWidth, self.tileyPos+self.tileHeight)
     #     self.tileRoi.scannerCoords = [
@@ -933,7 +933,7 @@ class Imager(Module):
 
     def imageUpdated(self, frame):
         ## New image is displayed; update image transform
-        self.imageItem.setTransform(frame.globalTransform().as_pyqtgraph().as2D())
+        self.imageItem.setTransform(frame.globalTransform.as_pyqtgraph().as2D())
 
     # def PMT_Run(self):
     #     """
@@ -1253,7 +1253,7 @@ class ImagingThread(Thread):
         info["time"] = start
 
         # TODO this needs to be coorx'd
-        info["deviceTransform"] = self.scannerDev.globalTransform()
+        info["deviceTransform"] = self.scannerDev.globalTransform.copy()
         info["transform"] = rectSystem.imageTransform()
 
         frame = ImagingFrame(pmtData, rectSystem.copy(), info)

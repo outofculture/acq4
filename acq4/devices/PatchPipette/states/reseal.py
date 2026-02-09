@@ -215,7 +215,7 @@ class ResealState(PatchPipetteState):
     pressureChangeRate : float
         Rate at which pressure should change from initial/nuzzleLimit to retraction (default is 0.5 kPa / min)
     maxRetractionSpeed : float
-        Speed in m/s to move pipette during each stepwise movement of the retraction (default is 10 um / s)
+        Speed in m/s to move pipette during each 1µm stepwise movement of the retraction (default is 10 um / s)
     retractionStepInterval : float
         Interval (seconds) between stepwise movements of the retraction (default is 5s)
     resealTimeout : float

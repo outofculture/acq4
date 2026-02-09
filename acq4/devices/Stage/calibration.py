@@ -258,7 +258,7 @@ class ManipulatorAxesCalibrationWindow(Qt.QWidget):
         # self._showTransformError(parentPos, stagePos)
 
         # send new transform to device
-        self.dev.setAxisTransform(self.transform)
+        self.dev.hardwareTransform = self.transform
 
     def _showTransformError(self, parentPos: np.ndarray, stagePos: np.ndarray):
         # measure and display errors for each point
@@ -268,7 +268,8 @@ class ManipulatorAxesCalibrationWindow(Qt.QWidget):
                 ident = np.eye(self.dev.nAxes + 1)
                 ident[:self.dev.nAxes] = axisTr.reshape(self.dev.nAxes, self.dev.nAxes + 1)
                 axisTr = pg.Transform3D(ident)
-            st = self.dev._makeStageTransform(_stage_pos, axisTr)
+            # TODO use new coorx API here
+            offset = self.dev.calculateStageOffset(_stage_pos, axisTr)
             tr = pg.Transform3D(self.dev.baseTransform() * st)
             return tr.map(localPos)
 

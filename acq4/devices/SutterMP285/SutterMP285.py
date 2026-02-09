@@ -141,6 +141,7 @@ class SutterMP285(Device, OptomechDevice):
         
         tr = pg.SRTTransform3D()
         tr.translate(*self.pos)
+        # TODO bitrot; this won't work anymore
         self.setDeviceTransform(tr) ## this informs rigidly-connected devices that they have moved
 
     def getPosition(self, refresh=False):

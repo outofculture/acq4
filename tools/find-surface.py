@@ -23,7 +23,7 @@ def find_surface_in_stack(zstack_filename: str, graph=False, threshold=92):
             info = fh.info().deepcopy()
             info['Depth'] = depth
             frame = Frame(stack_arr["Depth": i], info)
-            tr = frame.globalTransform()
+            tr = frame.globalTransform
             current_depth = tr.map(np.array([0, 0, 0]))[2]
             tr.translate(0, 0, current_depth - depth)
             frame._info['transform'] = tr

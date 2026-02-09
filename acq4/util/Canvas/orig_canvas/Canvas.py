@@ -252,7 +252,7 @@ class Canvas(QtWidgets.QWidget):
             ci.sigTransformChangeFinished.emit(ci)
         
     def multiSelectBoxMoved(self):
-        transform = self.multiSelectBox.getGlobalTransform()
+        transform = self.multiSelectBox.getGlobalTransform
         for ci in self.selectedItems():
             ci.setTemporaryTransform(transform)
             ci.sigTransformChanged.emit(ci)

@@ -61,7 +61,7 @@ def enforce_linear_z_stack(frames: list[Frame], start: float, stop: float, step:
     for i in idxes:
         depth, j = depths[i]
         frame = frames[j]
-        xform = frame.globalTransform().as_affine()
+        xform = frame.globalTransform.as_affine()
         xform.offset = [xform.offset[0], xform.offset[1], depth]
         frame.addInfo(transform=xform)
         ret_frames.append(frame)
@@ -418,7 +418,7 @@ def _fix_frame_transforms(frames, z_step):
     # (which should be approximately true if the frames are about evenly spaced)
     for f in frames:
         # this xform will be composite, so we can't just do `.scale = ...`
-        xform = f.globalTransform().as_affine()
+        xform = f.globalTransform.as_affine()
         z_vector = np.array(xform.matrix[:, 2])
         z_vector /= np.linalg.norm(z_vector)
         z_vector *= z_step
@@ -609,13 +609,13 @@ class ImageSequencerCtrl(Qt.QWidget):
     def setTopLeftClicked(self):
         cam = self._selectedImagerOrComplain()
         region = cam.getParam("region")
-        bound = cam.globalTransform().map((region[0], region[1], 0))
+        bound = cam.globalTransform.map((region[0], region[1], 0))
         self.ui.xLeftSpin.setValue(bound[0])
         self.ui.yTopSpin.setValue(bound[1])
 
     def setBottomRightClicked(self):
         cam = self._selectedImagerOrComplain()
         region = cam.getParam("region")
-        bound = cam.globalTransform().map((region[0] + region[2], region[1] + region[3], 0))
+        bound = cam.globalTransform.map((region[0] + region[2], region[1] + region[3], 0))
         self.ui.xRightSpin.setValue(bound[0])
         self.ui.yBottomSpin.setValue(bound[1])
