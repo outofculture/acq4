@@ -4,7 +4,6 @@ import collections
 
 import numpy as np
 
-import pyqtgraph as pg
 from acq4.Interfaces import InterfaceMixin
 from acq4.util import Qt
 from acq4.util.Mutex import Mutex
@@ -169,17 +168,16 @@ class OptomechDevice(InterfaceMixin):
             self.__transform = load_transform_from_anything(config["transform"])
         else:
             self.__transform = SRT3DTransform(dims=(3, 3))
-
         # This transform maps from the device's local coordinate system to the parent device's coordinate system
-        self._deviceTransformWrapper = CompositeTransform([self.__transform, NullTransform(dims=(3, 3))])
+        self._deviceTransformWrapper = CompositeTransform([NullTransform(dims=(3, 3)), self.__transform])
         self.deviceTransform.add_change_callback(self._handleDeviceTransformChange)
 
-        self.physicalTransform = CompositeTransform([self._physicalTransform, NullTransform(dims=(3, 3))])
+        self.physicalTransform = CompositeTransform([NullTransform(dims=(3, 3)), self._physicalTransform])
 
         # This transform maps from local device coordinates to global coordinates
-        self.globalTransform = CompositeTransform([NullTransform(dims=(3, 3)), self.deviceTransform])
+        self.globalTransform = CompositeTransform([self.deviceTransform, NullTransform(dims=(3, 3))])
         self.globalPhysicalTransform = CompositeTransform(
-            [NullTransform(dims=(3, 3)), self.physicalTransform]
+            [self.physicalTransform, NullTransform(dims=(3, 3))]
         )
 
         if "parentDevice" in config:
@@ -474,9 +472,9 @@ class OptomechDevice(InterfaceMixin):
     def deviceTransformWithHypotheticalSubdevice(self, dev):
         """Return the deviceTransform that would be in effect if the specified subdevice were selected."""
         if dev is None:
-            return CompositeTransform([self.__transform, NullTransform(dims=(3, 3))])
+            return CompositeTransform([NullTransform(dims=(3, 3)),  self.__transform])
         else:
-            return CompositeTransform([self.__transform, dev.deviceTransform])
+            return CompositeTransform([dev.deviceTransform, self.__transform])
 
     def listSubdevices(self):
         """Return a list of all subdevices that may be selected for this device. Override in subclasses."""
