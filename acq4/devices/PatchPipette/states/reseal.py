@@ -458,49 +458,59 @@ class ResealState(PatchPipetteState):
                 step = current_depth + direction * speed
                 _future.waitFor(self.dev.pipetteDevice.advance(step, speed))
 
+    def _resistanceProgress(self):
+        """Fraction of resistance progress from baseline (0) toward successful reseal (1)."""
+        ratio = self._resistanceRatio()
+        success_mult = self.config['resealSuccessResistanceMultiplier']
+        if success_mult <= 1:
+            return 0
+        return max(0, (ratio - 1.0) / (success_mult - 1.0))
+
     def _calculateRetractionSpeed(self):
         if self.config['retractionSpeedStrategy'] == 'constant':
             return self.config['retractionMinimumSpeed']
         elif self.config['retractionSpeedStrategy'] == 'exponential':
             distance = self.retractionDistance()
-            resistance_ratio = self._resistanceRatio()
+            resistance_progress = self._resistanceProgress()
             speed = self.config['retractionMinimumSpeed'] + (
                 self.config['retractionMaximumSpeed'] - self.config['retractionMinimumSpeed']
             ) * (
-                np.exp(distance / self.config['retractionExponentialDistanceScale'])
-                + np.exp(resistance_ratio / self.config['retractionExponentialResistanceScale'])
+                (np.exp(distance / self.config['retractionExponentialDistanceScale']) - 1)
+                + (np.exp(resistance_progress / self.config['retractionExponentialResistanceScale']) - 1)
             )
             return min(speed, self.config['retractionMaximumSpeed'])
         elif self.config['retractionSpeedStrategy'] == 'piecewise':
-            # the speed has to be summed up from the individual components
             distance = self.retractionDistance()
+            resistance_progress = self._resistanceProgress()
             speed = self.config['retractionMinimumSpeed']
-            possible_extra_distance_contribution = 0
-            previous_min_distance = 0
-            for min_distance, slope in sorted(eval(self.config['retractionPiecewiseSlopeByDistance'])):
-                if distance >= min_distance:
-                    speed += slope * (min_distance - previous_min_distance)
-                    possible_extra_distance_contribution = slope * (distance - min_distance)
-                    previous_min_distance = min_distance
-                else:
-                    speed += possible_extra_distance_contribution
-                    break
-            possible_extra_resistance_contribution = 0
-            previous_min_resistance_ratio = 0
-            resistance_ratio = self._resistanceRatio()
-            for min_resistance_ratio, slope in sorted(eval(self.config['retractionPiecewiseSlopeByResistance'])):
-                if resistance_ratio >= min_resistance_ratio:
-                    speed += slope * (min_resistance_ratio - previous_min_resistance_ratio)
-                    possible_extra_resistance_contribution = slope * (resistance_ratio - min_resistance_ratio)
-                    previous_min_resistance_ratio = min_resistance_ratio
-                else:
-                    speed += possible_extra_resistance_contribution
-                    break
+            speed += self._piecewiseContribution(
+                distance, eval(self.config['retractionPiecewiseSlopeByDistance']))
+            speed += self._piecewiseContribution(
+                resistance_progress, eval(self.config['retractionPiecewiseSlopeByResistance']))
             return min(speed, self.config['retractionMaximumSpeed'])
         else:
             raise ValueError(
                 f"Invalid retractionSpeedStrategy: {self.config['retractionSpeedStrategy']}"
             )
+
+    @staticmethod
+    def _piecewiseContribution(value, breakpoints):
+        """Sum piecewise-linear contributions for a value given sorted (threshold, slope) pairs."""
+        breakpoints = sorted(breakpoints)
+        contribution = 0
+        previous_threshold = 0
+        for threshold, slope in breakpoints:
+            if value <= threshold:
+                # value falls within this segment; add partial contribution
+                contribution += slope * (value - previous_threshold)
+                return contribution
+            # value is past this segment; add the full segment width
+            contribution += slope * (threshold - previous_threshold)
+            previous_threshold = threshold
+        # value is past all breakpoints; continue at the last slope
+        _, last_slope = breakpoints[-1]
+        contribution += last_slope * (value - previous_threshold)
+        return contribution
 
     def _resistanceRatio(self):
         return (
