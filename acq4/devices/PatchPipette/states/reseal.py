@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import contextlib
+
 import numpy as np
 
 import pyqtgraph as pg
 from acq4.util import ptime
 from acq4.util.functions import plottable_booleans
 from acq4.util.future import Future, future_wrap
+from pyqtgraph.units import µm
 from ._base import PatchPipetteState, SteadyStateAnalysisBase, exponential_decay_avg
 
 
@@ -134,26 +136,55 @@ class ResealState(PatchPipetteState):
         Number of times to repeat the nuzzling sequence (default is 2)
     nuzzleSpeed : float
         Speed to move pipette during nuzzling (default is 5 µm / s)
-    initialPressure : float
-        Initial pressure (Pa) to apply after nucleus nuzzling, before retraction (default is -0.5 kPa)
-    retractionPressure : float
-        Pressure (Pa) to apply during retraction (default is -7 kPa)
     pressureChangeRate : float
         Rate at which pressure should change from initial/nuzzleLimit to retraction (default is 0.5 kPa / min)
-    maxRetractionSpeed : float
-        Speed in m/s to move pipette during each stepwise movement of the retraction (default is 10 um / s)
-    retractionStepInterval : float
-        Interval (seconds) between stepwise movements of the retraction (default is 5s)
+    retractionPressure : float
+        Pressure (Pa) to apply during retraction (default is -7 kPa)
     resealTimeout : float
         Seconds before reseal attempt exits, not including grabbing the nucleus and baseline measurements (default is
         10 min)
+    retractionSpeedStrategy : str
+        How to determine retraction speed. All strategies will be clipped to `retractionMaximumSpeed`.
+        "constant" will use the `retractionMinimumSpeed` until successful reseal.
+        "exponential" will start at `retractionMinimumSpeed` and increase to `retractionMaximumSpeed`
+        with an equation of "min + (max - min) * exp(d / d_scale) + (max - min) * exp(R% / R_scale)".
+        "piecewise" will be "min + (max - min) * (d * d_factor) + (max - min) * (R% * R_factor)"
+        where the factors each come from `retractionPiecewiseSlopeByDistance` and
+        `retractionPiecewiseSlopeByResistance` and `R%` is percent (0-1) of the way from baseline R
+        to successful R.
+        Default is "constant".
+    retractionMinimumSpeed : float
+        If "constant" strategy, the speed in m/s to retract at. For other strategies, the minimum
+        speed to retract at (default 0.2 µm/s)
+    retractionMaximumSpeed : float
+        The maximum speed to retract at (default 6 µm/s)
+    retractionExponentialDistanceScale : float
+        If "exponential" strategy, the distance scale factor for the exponential increase based on
+        distance retracted (default is 200 µm)
+    retractionExponentialResistanceScale : float
+        If "exponential" strategy, the resistance scale factor for the exponential increase based
+        on resistance (default is 1)
+    retractionPiecewiseSlopeByDistance : str
+        If "piecewise" strategy, a string to eval into a list of (min distance, slope) tuples.
+        Default is "[(0, 0), (50 * µm, 0.005), (150 * µm, 0.01)]", with `m / s / m` units for slope.
+    retractionPiecewiseSlopeByResistance : str
+        If "piecewise" strategy, a string to eval into a list of (resistance percent, slope) tuples.
+        Default is "[(0, 0), (0.25, 0.4 * µm), (0.75, 4 * µm)]", with `m / s / R%` units for slope,
+        which is easier thought of as "total expected increase in speed if this rate were applied
+        uniformly for the entire transition to successful reseal R".
+    retractionSuccessDistance : float
+        Distance (meters) to deem reseal successful regardless of resistance (default is 200 µm)
+    resealSuccessResistanceMultiplier : float
+        The reseal is considered successful when resistance exceeds initial resistance times this
+        value (default is 4)
+    minimumSuccessResistance : float
+        Minimum resistance (Ohms) to consider the reseal successful, regardless of initial
+        resistance (default is 500 MOhm)
     detectionTau : float
         Seconds of resistence measurements to average when detecting tears and stretches (default 1s)
     repairTau : float
         Seconds of resistence measurements to average when determining when a tear or stretch has been corrected
         (default 10s)
-    fallbackState : str
-        State to transition to if reseal fails (default is 'whole cell')
     stretchDetectionThreshold : float
         Maximum access resistance ratio before the membrane is considered to be stretching (default is 1.05)
     tearDetectionThreshold : float
@@ -161,17 +192,8 @@ class ResealState(PatchPipetteState):
     tornDetectionThreshold : float
         Ratio of resistance divided by initial resistance below which the membrane is considered to be torn, using the
         repairTau (default is 0.5)
-    retractionSuccessDistance : float
-        Distance (meters) to deem reseal successful regardless of resistance (default is 200 µm)
-    minimumSuccessDistance : float
-        Minimum distance (meters) to retract before checking for successful reseal, regardless of
-        resistance (default is 20µm)
-    resealSuccessResistanceMultiplier : float
-        The reseal is considered successful when resistance exceeds initial resistance times this
-        value (default is 4)
-    minimumSuccessResistance : float
-        Minimum resistance (Ohms) to consider the reseal successful, regardless of initial
-        resistance (default is 500 MOhm)
+    tearRecoverySpeed : float
+        Speed in m/s to move pipette when trying to recover from a tear (default is 0.5 µm/s)
     resealSuccessDuration : float
         Duration (seconds) to wait after successful reseal before transitioning to the slurp (default is 5s)
     postSuccessRetractionSpeed : float
@@ -194,32 +216,37 @@ class ResealState(PatchPipetteState):
         'initialTestPulseEnable': True,
         'initialPressure': -0.5e3,
         'initialPressureSource': 'regulator',
+        'fallbackState': 'whole cell',
     }
     _parameterTreeConfig = {
         'extractNucleus': {'type': 'bool', 'default': True},
-        'fallbackState': {'type': 'str', 'default': 'whole cell'},
+        'nuzzlePressureLimit': {'type': 'float', 'default': -2e3, 'suffix': 'Pa'},
         'nuzzleDuration': {'type': 'float', 'default': 30, 'suffix': 's'},
         'nuzzleInitialPressure': {'type': 'float', 'default': 0, 'suffix': 'Pa'},
         'nuzzleLateralWiggleRadius': {'type': 'float', 'default': 5e-6, 'suffix': 'm'},
-        'nuzzlePressureLimit': {'type': 'float', 'default': -2e3, 'suffix': 'Pa'},
         'nuzzleRepetitions': {'type': 'int', 'default': 2},
         'nuzzleSpeed': {'type': 'float', 'default': 5e-6, 'suffix': 'm/s'},
         'pressureChangeRate': {'type': 'float', 'default': 0.5e3 / 60, 'suffix': 'Pa/s'},
-        'resealTimeout': {'type': 'float', 'default': 10 * 60, 'suffix': 's'},
         'retractionPressure': {'type': 'float', 'default': -7e3, 'suffix': 'Pa'},
-        'maxRetractionSpeed': {'type': 'float', 'default': 10e-6, 'suffix': 'm/s'},
-        'retractionStepInterval': {'type': 'float', 'default': 5, 'suffix': 's'},
+        'resealTimeout': {'type': 'float', 'default': 10 * 60, 'suffix': 's'},
+        'retractionSpeedStrategy': {'type': 'str', 'default': 'constant', 'options': ['constant', 'exponential', 'piecewise']},
+        'retractionMinimumSpeed': {'type': 'float', 'default': 0.2e-6, 'suffix': 'm/s'},
+        'retractionMaximumSpeed': {'type': 'float', 'default': 6e-6, 'suffix': 'm/s'},
+        'retractionExponentialDistanceScale': {'type': 'float', 'default': 200e-6, 'suffix': 'm'},
+        'retractionExponentialResistanceScale': {'type': 'float', 'default': 1.0},
+        'retractionPiecewiseSlopeByDistance': {'type': 'str', 'default': "[(0, 0), (50e-6, 0.005), (150e-6, 0.01)]"},
+        'retractionPiecewiseSlopeByResistance': {'type': 'str', 'default': "[(0, 0), (0.25, 0.4e-6), (0.75, 4e-6)]"},
         'retractionSuccessDistance': {'type': 'float', 'default': 200e-6, 'suffix': 'm'},
-        'minimumSuccessDistance': {'type': 'float', 'default': 20e-6, 'suffix': 'm'},
         'resealSuccessResistanceMultiplier': {'type': 'float', 'default': 4.0},
         'minimumSuccessResistance': {'type': 'float', 'default': 500e6, 'suffix': 'Ω'},
-        'resealSuccessDuration': {'type': 'float', 'default': 5, 'suffix': 's'},
-        'postSuccessRetractionSpeed': {'type': 'float', 'default': 6e-6, 'suffix': 'm/s'},
         'detectionTau': {'type': 'float', 'default': 1, 'suffix': 's'},
         'repairTau': {'type': 'float', 'default': 10, 'suffix': 's'},
         'stretchDetectionThreshold': {'type': 'float', 'default': 0.005},
         'tearDetectionThreshold': {'type': 'float', 'default': -0.00128},
         'tornDetectionThreshold': {'type': 'float', 'default': 0.5},
+        'tearRecoverySpeed': {'type': 'float', 'default': 0.5e-6, 'suffix': 'm/s'},
+        'resealSuccessDuration': {'type': 'float', 'default': 5, 'suffix': 's'},
+        'postSuccessRetractionSpeed': {'type': 'float', 'default': 6e-6, 'suffix': 'm/s'},
         'slurpPressure': {'type': 'float', 'default': -10e3, 'suffix': 'Pa'},
         'slurpRetractionSpeed': {'type': 'float', 'default': 10e-6, 'suffix': 'm/s'},
         'slurpDuration': {'type': 'float', 'default': 10, 'suffix': 's'},
@@ -292,15 +319,11 @@ class ResealState(PatchPipetteState):
         return np.mean([tp.analysis['steady_state_resistance'] for tp in self._preAnalysisTpss])
 
     def isRetractionSuccessful(self):
-        distance = self.retractionDistance()
-        if distance > self.config['retractionSuccessDistance']:
-            self.setState("retraction distance sufficient for success")
-            return True
-
         success = (
-            distance > self.config['minimumSuccessDistance']
-            and self._lastResistance is not None
-            and self._lastResistance > self.successResistanceThreshold()
+                self.retractionDistance() > self.config['retractionSuccessDistance']
+                and not self.isStretching()
+                and not self.isTearing()
+                and not self.isTorn()
         )
 
         if not success:
@@ -311,7 +334,7 @@ class ResealState(PatchPipetteState):
         elif ptime.time() - (self._firstSuccessTime or 0) < self.config['resealSuccessDuration']:
             success = False
         else:  # sustained success!
-            self.setState("resistance sufficient for success")
+            self.setState("retraction distance sufficient for success")
         return success
 
     def processAtLeastOneTestPulse(self):
@@ -361,10 +384,8 @@ class ResealState(PatchPipetteState):
                 if retraction_future and not retraction_future.isDone():
                     self.setState("handling tear")
                     retraction_future.stop()
-                    self._moveFuture = recovery_future = dev.pipetteDevice.stepwiseAdvance(
-                        self._startPosition[2],
-                        maxSpeed=self.config['maxRetractionSpeed'],
-                        interval=config['retractionStepInterval'],
+                    self._moveFuture = recovery_future = self._goToDepth(
+                        self._startPosition[2], config['tearRecoverySpeed']
                     )
             elif self.isTorn():
                 if retraction_future and not retraction_future.isDone():
@@ -376,10 +397,8 @@ class ResealState(PatchPipetteState):
                 if recovery_future is not None and not recovery_future.isDone():
                     recovery_future.stop()
                 self.setState("retracting")
-                self._moveFuture = retraction_future = dev.pipetteDevice.stepwiseAdvance(
-                    dev.pipetteDevice.approachDepth(),
-                    maxSpeed=config['maxRetractionSpeed'],
-                    interval=config['retractionStepInterval'],
+                self._moveFuture = retraction_future = self._goToDepth(
+                    dev.pipetteDevice.approachDepth()
                 )
 
             self.sleep(0.2)
@@ -412,3 +431,78 @@ class ResealState(PatchPipetteState):
         if self._pressureFuture is not None:
             self._pressureFuture.stop()
         return super().cleanup()
+
+    def _goToDepth(self, depth: float, speed=None):
+        if speed is None:
+            return self._variableSpeedRetraction(depth)
+        elif speed < 1 * µm:
+            return self.dev.pipetteDevice.stepwiseAdvance(
+                depth,
+                interval=1 * µm / speed,
+            )
+        else:
+            return self.dev.pipetteDevice.advance(depth, speed)
+
+    @future_wrap
+    def _variableSpeedRetraction(self, depth, _future):
+        current_depth = self.dev.pipetteDevice.globalPosition()[2]
+        direction = np.sign(depth - current_depth)
+        while direction * (depth - current_depth) > 0:
+            current_depth = self.dev.pipetteDevice.globalPosition()[2]
+            speed = self._calculateRetractionSpeed()
+            if speed < 1 * µm:
+                step = current_depth + direction * 1 * µm
+                _future.waitFor(self.dev.pipetteDevice.advance(step, 'slow'))
+                _future.sleep(1 / speed)
+            else:
+                step = current_depth + direction * speed
+                _future.waitFor(self.dev.pipetteDevice.advance(step, speed))
+
+    def _calculateRetractionSpeed(self):
+        if self.config['retractionSpeedStrategy'] == 'constant':
+            return self.config['retractionMinimumSpeed']
+        elif self.config['retractionSpeedStrategy'] == 'exponential':
+            distance = self.retractionDistance()
+            resistance_ratio = self._resistanceRatio()
+            speed = self.config['retractionMinimumSpeed'] + (
+                self.config['retractionMaximumSpeed'] - self.config['retractionMinimumSpeed']
+            ) * (
+                np.exp(distance / self.config['retractionExponentialDistanceScale'])
+                + np.exp(resistance_ratio / self.config['retractionExponentialResistanceScale'])
+            )
+            return min(speed, self.config['retractionMaximumSpeed'])
+        elif self.config['retractionSpeedStrategy'] == 'piecewise':
+            # the speed has to be summed up from the individual components
+            distance = self.retractionDistance()
+            speed = self.config['retractionMinimumSpeed']
+            possible_extra_distance_contribution = 0
+            previous_min_distance = 0
+            for min_distance, slope in sorted(eval(self.config['retractionPiecewiseSlopeByDistance'])):
+                if distance >= min_distance:
+                    speed += slope * (min_distance - previous_min_distance)
+                    possible_extra_distance_contribution = slope * (distance - min_distance)
+                    previous_min_distance = min_distance
+                else:
+                    speed += possible_extra_distance_contribution
+                    break
+            possible_extra_resistance_contribution = 0
+            previous_min_resistance_ratio = 0
+            resistance_ratio = self._resistanceRatio()
+            for min_resistance_ratio, slope in sorted(eval(self.config['retractionPiecewiseSlopeByResistance'])):
+                if resistance_ratio >= min_resistance_ratio:
+                    speed += slope * (min_resistance_ratio - previous_min_resistance_ratio)
+                    possible_extra_resistance_contribution = slope * (resistance_ratio - min_resistance_ratio)
+                    previous_min_resistance_ratio = min_resistance_ratio
+                else:
+                    speed += possible_extra_resistance_contribution
+                    break
+            return min(speed, self.config['retractionMaximumSpeed'])
+        else:
+            raise ValueError(
+                f"Invalid retractionSpeedStrategy: {self.config['retractionSpeedStrategy']}"
+            )
+
+    def _resistanceRatio(self):
+        return (
+            self._lastResistance / self.preAnalysisResistance() if self._lastResistance else 0
+        )
