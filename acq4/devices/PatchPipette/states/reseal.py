@@ -166,10 +166,10 @@ class ResealState(PatchPipetteState):
         on resistance (default is 1)
     retractionPiecewiseSlopeByDistance : str
         If "piecewise" strategy, a string to eval into a list of (min distance, slope) tuples.
-        Default is "[(0, 0), (50 * µm, 0.005), (150 * µm, 0.01)]", with `m / s / m` units for slope.
+        Default is "[(0, 0), (20 * µm, 0.005), (150 * µm, 0.05)]", with `m / s / m` units for slope.
     retractionPiecewiseSlopeByResistance : str
         If "piecewise" strategy, a string to eval into a list of (resistance percent, slope) tuples.
-        Default is "[(0, 0), (0.25, 0.4 * µm), (0.75, 4 * µm)]", with `m / s / R%` units for slope,
+        Default is "[(0, 0), (0.3, 0.5 * µm), (0.75, 10 * µm)]", with `m / s / R%` units for slope,
         which is easier thought of as "total expected increase in speed if this rate were applied
         uniformly for the entire transition to successful reseal R".
     retractionSuccessDistance : float
@@ -234,8 +234,8 @@ class ResealState(PatchPipetteState):
         'retractionMaximumSpeed': {'type': 'float', 'default': 6e-6, 'suffix': 'm/s'},
         'retractionExponentialDistanceScale': {'type': 'float', 'default': 200e-6, 'suffix': 'm'},
         'retractionExponentialResistanceScale': {'type': 'float', 'default': 1.0},
-        'retractionPiecewiseSlopeByDistance': {'type': 'str', 'default': "[(0, 0), (50e-6, 0.005), (150e-6, 0.01)]"},
-        'retractionPiecewiseSlopeByResistance': {'type': 'str', 'default': "[(0, 0), (0.25, 0.4e-6), (0.75, 4e-6)]"},
+        'retractionPiecewiseSlopeByDistance': {'type': 'str', 'default': "[(0, 0), (20e-6, 0.005), (150e-6, 0.05)]"},
+        'retractionPiecewiseSlopeByResistance': {'type': 'str', 'default': "[(0, 0), (0.3, 0.4e-6), (0.75, 10e-6)]"},
         'retractionSuccessDistance': {'type': 'float', 'default': 200e-6, 'suffix': 'm'},
         'resealSuccessResistanceMultiplier': {'type': 'float', 'default': 4.0},
         'minimumSuccessResistance': {'type': 'float', 'default': 500e6, 'suffix': 'Ω'},
