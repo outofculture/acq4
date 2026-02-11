@@ -452,8 +452,9 @@ class ResealState(PatchPipetteState):
             speed = self._calculateRetractionSpeed()
             if speed < 1 * µm:
                 step = current_depth + direction * 1 * µm
+                start = ptime.time()
                 _future.waitFor(self.dev.pipetteDevice.advance(step, 'slow'))
-                _future.sleep(1 / speed)
+                _future.sleep(max(0, (1 / speed) - (ptime.time() - start)))
             else:
                 step = current_depth + direction * speed
                 _future.waitFor(self.dev.pipetteDevice.advance(step, speed))

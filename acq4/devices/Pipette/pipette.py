@@ -577,10 +577,11 @@ class Pipette(Device, OptomechDevice):
             delta = 1e-6
             distance = np.linalg.norm(direction)
             step = pos + delta * direction / distance
+            start = ptime.time()
             _future.waitFor(self._moveToGlobal(step, speed=maxSpeed, linear=True))
             if distance <= delta:
                 break
-            _future.sleep(interval)
+            _future.sleep(max(0, interval - (ptime.time() - start)))
 
     @future_wrap
     def wiggle(self, speed, radius, repetitions, duration, pipette_direction=None, extra=None, _future=None):
