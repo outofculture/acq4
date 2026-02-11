@@ -7,6 +7,7 @@ from .broken import BrokenState
 from .cell_attached import CellAttachedState
 from .cell_detect import CellDetectAnalysis, CellDetectState
 from .clean import CleanState
+from .clear import ClearState
 from .fouled import FouledState
 from .move_nucleus_to_home import MoveNucleusToHomeState
 from .nucleus_collect import NucleusCollectState
@@ -32,6 +33,7 @@ __all__ = [
     'BreakInState',
     'ResealAnalysis',
     'ResealState',
+    'ClearState',
     'MoveNucleusToHomeState',
     'BlowoutState',
     'CleanState',
