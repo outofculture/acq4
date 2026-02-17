@@ -13,8 +13,11 @@ class ClearState(PatchPipetteState):
     recoveryTimeout : float
         Time (s) to spend trying to recover from a cell loss before giving up (default 30 s).
     recoveryResistanceThresholdAbsolute : float
-        Resistance (Ohms) below which to consider the cell loss successfully reversed and
+        Access resistance (Ohms) below which to consider the cell loss successfully reversed and
         transition to 'whole cell' state (default 10 MΩ).
+    recoverySustainedTime : float
+        Time (s) that resistance must be below the recovery threshold before considering the cell loss successfully
+        reversed and transitioning to 'whole cell' state (default 2 s).
     """
 
     stateName = 'clear'
